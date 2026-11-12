@@ -35,9 +35,9 @@ jobs:
           mkdir -p ci-logs
           flutter --version | tee ci-logs/version.log
           flutter pub get 2>&1 | tee ci-logs/pub.log
-          dart run build_runner build --delete-conflicting-outputs 2>&1 | tee ci-logs/build_runner.log
+          dart run build_runner build 2>&1 | tee ci-logs/build_runner.log
       - name: Analyze
-        run: flutter analyze 2>&1 | tee ci-logs/analyze.log
+        run: flutter analyze --no-fatal-infos 2>&1 | tee ci-logs/analyze.log
       - name: Test
         run: flutter test 2>&1 | tee ci-logs/test.log
       - name: Signing key

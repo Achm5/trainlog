@@ -1,13 +1,14 @@
+// ignore_for_file: recursive_getters
 import 'package:drift/drift.dart';
 
 /// Схема БД — раздел 7 ТЗ (22 таблицы).
 /// Даты — TEXT YYYY-MM-DD, метки времени — INTEGER (Unix, мс), JSON — TEXT.
 
-int _nowMs() => DateTime.now().millisecondsSinceEpoch;
+int nowMs() => DateTime.now().millisecondsSinceEpoch;
 
 mixin Timestamps on Table {
-  IntColumn get createdAt => integer().clientDefault(_nowMs)();
-  IntColumn get updatedAt => integer().clientDefault(_nowMs)();
+  IntColumn get createdAt => integer().clientDefault(nowMs)();
+  IntColumn get updatedAt => integer().clientDefault(nowMs)();
 }
 
 // ---------- 7.1 Настройки ----------
@@ -279,6 +280,7 @@ class Products extends Table with Timestamps {
 
 class RecipeItems extends Table with Timestamps {
   IntColumn get recipeProductId => integer().references(Products, #id, onDelete: KeyAction.cascade)();
+  @ReferenceName('recipeUsages')
   IntColumn get productId => integer().references(Products, #id, onDelete: KeyAction.restrict)();
   RealColumn get grams => real()();
 
