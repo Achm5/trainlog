@@ -229,6 +229,44 @@ class PlannerRepo {
             .write(ProgramDayExercisesCompanion(programDayId: Value(targetDayId), sortOrder: Value(n)));
       });
 
+  /// Копирует упражнения дня вместе с планом по неделям в другой день той же программы.
+  /// При [replace] упражнения целевого дня сначала удаляются, иначе копии добавляются в конец.
+  Future<int> copyDay({required int fromDayId, required int toDayId, bool replace = false}) {
+    return db.transaction(() async {
+      if (replace) {
+        await (db.delete(db.programDayExercises)..where((e) => e.programDayId.equals(toDayId))).go();
+      }
+      var order = (await dayExercises(toDayId)).length;
+      final source = await dayExercises(fromDayId);
+      for (final e in source) {
+        final newId = await db.into(db.programDayExercises).insert(ProgramDayExercisesCompanion.insert(
+              programDayId: toDayId,
+              exerciseId: e.exerciseId,
+              sortOrder: Value(order++),
+              restSec: Value(e.restSec),
+              loadMode: Value(e.loadMode),
+              startWeightKg: Value(e.startWeightKg),
+              weeklyStepKg: Value(e.weeklyStepKg),
+            ));
+        for (final v in await plansOf(e.id)) {
+          final p = v.plan;
+          await db.into(db.exerciseWeekPlans).insert(ExerciseWeekPlansCompanion.insert(
+                programDayExerciseId: newId,
+                programWeekId: p.programWeekId,
+                sets: p.sets,
+                repsMin: p.repsMin,
+                repsMax: p.repsMax,
+                weightKg: Value(p.weightKg),
+                percent1rm: Value(p.percent1rm),
+                targetRir: Value(p.targetRir),
+                isManual: Value(p.isManual),
+              ));
+        }
+      }
+      return source.length;
+    });
+  }
+
   Future<void> updatePde(int pdeId, ProgramDayExercisesCompanion data) async {
     await (db.update(db.programDayExercises)..where((e) => e.id.equals(pdeId))).write(data);
     await recalcPlans(pdeId);

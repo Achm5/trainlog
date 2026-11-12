@@ -141,6 +141,42 @@ class _DayTab extends ConsumerWidget {
     if (target != null) await ref.read(plannerRepoProvider).moveToDay(v.item.id, target);
   }
 
+  /// Копирует тренировку этого дня в другой день программы.
+  Future<void> _copyDay(BuildContext context, WidgetRef ref, int count) async {
+    final planner = ref.read(plannerRepoProvider);
+    final target = await showDialog<ProgramDay>(
+      context: context,
+      builder: (c) => SimpleDialog(
+        title: Text('Скопировать «${weekdayFull[day.weekday - 1]}» в день'),
+        children: [
+          for (final d in days.where((d) => d.id != day.id))
+            SimpleDialogOption(onPressed: () => Navigator.pop(c, d), child: Text(weekdayFull[d.weekday - 1])),
+        ],
+      ),
+    );
+    if (target == null || !context.mounted) return;
+    var replace = false;
+    if ((await planner.dayExercises(target.id)).isNotEmpty) {
+      if (!context.mounted) return;
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text('В дне «${weekdayFull[target.weekday - 1]}» уже есть упражнения'),
+          content: const Text('Заменить их копией или добавить копию в конец списка?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c), child: const Text('Отмена')),
+            TextButton(onPressed: () => Navigator.pop(c, 'add'), child: const Text('Добавить')),
+            FilledButton(onPressed: () => Navigator.pop(c, 'replace'), child: const Text('Заменить')),
+          ],
+        ),
+      );
+      if (choice == null) return;
+      replace = choice == 'replace';
+    }
+    final n = await planner.copyDay(fromDayId: day.id, toDayId: target.id, replace: replace);
+    if (context.mounted) toast(context, 'Скопировано упражнений: $n → ${weekdayFull[target.weekday - 1]}');
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final planner = ref.read(plannerRepoProvider);
@@ -252,15 +288,29 @@ class _DayTab extends ConsumerWidget {
             ),
             Padding(
               padding: const EdgeInsets.all(12),
-              child: FilledButton.tonalIcon(
-                icon: const Icon(Icons.add),
-                label: const Text('Добавить упражнение'),
-                onPressed: () async {
-                  final exId = await pickExercise(context);
-                  if (exId == null) return;
-                  final pdeId = await planner.addExercise(dayId: day.id, exerciseId: exId);
-                  if (context.mounted) context.push('/plan/$pdeId');
-                },
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Добавить упражнение'),
+                      onPressed: () async {
+                        final exId = await pickExercise(context);
+                        if (exId == null) return;
+                        final pdeId = await planner.addExercise(dayId: day.id, exerciseId: exId);
+                        if (context.mounted) context.push('/plan/$pdeId');
+                      },
+                    ),
+                  ),
+                  if (items.isNotEmpty && days.length > 1) ...[
+                    const SizedBox(width: 8),
+                    IconButton.outlined(
+                      tooltip: 'Скопировать день в другой',
+                      icon: const Icon(Icons.copy_all_outlined),
+                      onPressed: () => _copyDay(context, ref, items.length),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],

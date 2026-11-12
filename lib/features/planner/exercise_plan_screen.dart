@@ -58,6 +58,19 @@ class ExercisePlanScreen extends ConsumerWidget {
         title: Text(name),
         actions: [IconButton(tooltip: 'Задать для всех недель', icon: const Icon(Icons.playlist_add_check), onPressed: editAll)],
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+          child: SizedBox(
+            height: 52,
+            child: FilledButton.icon(
+              icon: const Icon(Icons.check),
+              label: const Text('Готово'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
@@ -118,8 +131,8 @@ class ExercisePlanScreen extends ConsumerWidget {
           const Divider(height: 24),
           for (final v in plans) _WeekCard(view: v, mode: mode),
           const SizedBox(height: 8),
-          const Text('Веса округляются вниз до шага округления. Вес, исправленный вручную, не пересчитывается, '
-              'пока не нажать «Сбросить».'),
+          const Text('Изменения сохраняются сразу. Веса округляются вниз до шага округления. '
+              'Вес, исправленный вручную, не пересчитывается, пока не нажать «Сбросить».'),
         ],
       ),
     );

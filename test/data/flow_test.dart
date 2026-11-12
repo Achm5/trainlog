@@ -158,4 +158,30 @@ void main() {
     expect(stats[0].e1rmDeltaPct, isNull);
     expect(stats[1].e1rmDeltaPct, closeTo(5, 1e-6));
   });
+
+  test('копирование дня: упражнения и план по неделям переносятся в другой день', () async {
+    final p = await program();
+    await planner.updatePde(
+        p.pdeId, const ProgramDayExercisesCompanion(loadMode: Value('linear'), startWeightKg: Value(80), weeklyStepKg: Value(2.5)));
+    final days = await planner.daysOf(p.programId);
+    final squat = await exerciseId('Приседания со штангой');
+    await planner.addExercise(dayId: days[1].id, exerciseId: squat);
+
+    expect(await planner.copyDay(fromDayId: p.dayId, toDayId: days[1].id), 1); // добавить в конец
+    var target = await planner.dayExercises(days[1].id);
+    expect(target.length, 2);
+    expect(target.last.loadMode, 'linear');
+    final src = await planner.plansOf(p.pdeId);
+    final copy = await planner.plansOf(target.last.id);
+    expect(copy.map((v) => (v.plan.sets, v.plan.repsMin, v.plan.weightKg, v.plan.targetRir)).toList(),
+        src.map((v) => (v.plan.sets, v.plan.repsMin, v.plan.weightKg, v.plan.targetRir)).toList());
+
+    expect(await planner.copyDay(fromDayId: p.dayId, toDayId: days[2].id, replace: true), 1);
+    expect(await planner.copyDay(fromDayId: p.dayId, toDayId: days[1].id, replace: true), 1); // заменить
+    target = await planner.dayExercises(days[1].id);
+    expect(target.single.exerciseId, isNot(squat));
+    // Копия независима от оригинала.
+    await planner.removeExercise(p.pdeId);
+    expect((await planner.dayExercises(days[1].id)).length, 1);
+  });
 }

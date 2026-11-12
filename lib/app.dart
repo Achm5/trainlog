@@ -40,11 +40,33 @@ final appRouter = GoRouter(
   ],
 );
 
-ThemeData _theme(Brightness b) => ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1F7A6B), brightness: b),
-      inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
-    );
+const brandRed = Color(0xFFEF233C);
+const brandBlack = Color(0xFF0D0D0D);
+
+/// Фирменные цвета: чёрный #0D0D0D и красный #EF233C.
+ThemeData _theme(Brightness b) {
+  final base = ColorScheme.fromSeed(seedColor: brandRed, brightness: b);
+  final scheme = b == Brightness.dark
+      ? base.copyWith(
+          primary: brandRed,
+          onPrimary: Colors.white,
+          surface: brandBlack,
+          onSurface: const Color(0xFFF2F2F2),
+          surfaceContainerLowest: const Color(0xFF080808),
+          surfaceContainerLow: const Color(0xFF151515),
+          surfaceContainer: const Color(0xFF1A1A1A),
+          surfaceContainerHigh: const Color(0xFF212121),
+          surfaceContainerHighest: const Color(0xFF2A2A2A),
+        )
+      : base.copyWith(primary: brandRed, onPrimary: Colors.white, onSurface: brandBlack);
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    scaffoldBackgroundColor: scheme.surface,
+    appBarTheme: AppBarTheme(backgroundColor: scheme.surface, surfaceTintColor: Colors.transparent),
+    inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
+  );
+}
 
 class TrainLogApp extends StatelessWidget {
   const TrainLogApp({super.key});

@@ -40,8 +40,9 @@ final _volumeProvider = StreamProvider.family<List<WeeklyMuscleVolumeRow>, Analy
     (ref, r) => ref.watch(analyticsRepoProvider).watchMuscleVolume(fromYmd: r.from, toYmd: r.to));
 
 const chartPalette = [
-  Color(0xFF1F7A6B),
+  Color(0xFFEF233C),
   Color(0xFFD9822B),
+  Color(0xFF1F9E8A),
   Color(0xFF3F6FD8),
   Color(0xFFB0408F),
   Color(0xFF7A8B1F),
