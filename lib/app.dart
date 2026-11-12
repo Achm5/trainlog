@@ -132,7 +132,7 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
         destinations: const [
           NavigationDestination(icon: Icon(Icons.fitness_center), label: 'Журнал'),
           NavigationDestination(icon: Icon(Icons.calendar_month), label: 'План'),
-          NavigationDestination(icon: Icon(Icons.show_chart), label: 'Аналитика'),
+          NavigationDestination(icon: Icon(Icons.show_chart), label: 'Анализ'),
           NavigationDestination(icon: Icon(Icons.restaurant), label: 'Питание'),
           NavigationDestination(icon: Icon(Icons.menu), label: 'Ещё'),
         ],
