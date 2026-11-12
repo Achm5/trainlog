@@ -5,6 +5,7 @@ import 'features/analytics/analytics_screen.dart';
 import 'features/data/data_screen.dart';
 import 'features/data/lock_gate.dart';
 import 'features/journal/session_screen.dart';
+import 'features/motion.dart';
 import 'features/journal/today_screen.dart';
 import 'features/nutrition/nutrition_screen.dart';
 import 'features/nutrition/profile_screen.dart';
@@ -65,6 +66,9 @@ ThemeData _theme(Brightness b) {
     scaffoldBackgroundColor: scheme.surface,
     appBarTheme: AppBarTheme(backgroundColor: scheme.surface, surfaceTintColor: Colors.transparent),
     inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {TargetPlatform.android: FadeSlideTransitionsBuilder()},
+    ),
   );
 }
 
@@ -94,21 +98,37 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMixin {
   int _index = 0;
+
+  // Мягкое проявление вкладки при переключении (состояние вкладок сохраняется).
+  late final _fade = AnimationController(vsync: this, duration: const Duration(milliseconds: 220), value: 1);
+
+  @override
+  void dispose() {
+    _fade.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: IndexedStack(
-          index: _index,
-          children: const [TodayScreen(), ProgramsScreen(), AnalyticsScreen(), NutritionScreen(), MoreScreen()],
+        child: FadeTransition(
+          opacity: _fade,
+          child: IndexedStack(
+            index: _index,
+            children: const [TodayScreen(), ProgramsScreen(), AnalyticsScreen(), NutritionScreen(), MoreScreen()],
+          ),
         ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) {
+          if (i == _index) return;
+          setState(() => _index = i);
+          _fade.forward(from: 0.25);
+        },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.fitness_center), label: 'Журнал'),
           NavigationDestination(icon: Icon(Icons.calendar_month), label: 'План'),

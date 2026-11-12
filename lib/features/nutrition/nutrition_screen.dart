@@ -8,6 +8,7 @@ import '../../domain/nutrition.dart';
 import '../../domain/planning.dart';
 import '../../providers.dart';
 import '../common.dart';
+import '../motion.dart';
 import '../ruler_picker.dart';
 import 'product_picker.dart';
 
@@ -138,11 +139,15 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
               onLongPress: weight == null ? null : () => repo.setWeight(_day, null),
             ),
           ),
-          for (final meal in mealOrder)
-            _MealCard(
-              day: _day,
-              meal: meal,
-              entries: entries.where((e) => e.log.meal == meal).toList(),
+          for (final (i, meal) in mealOrder.indexed)
+            Appear(
+              key: ValueKey('meal-$meal'),
+              index: i + 1,
+              child: _MealCard(
+                day: _day,
+                meal: meal,
+                entries: entries.where((e) => e.log.meal == meal).toList(),
+              ),
             ),
         ],
       ),

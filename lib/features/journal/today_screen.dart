@@ -7,6 +7,7 @@ import '../../domain/dates.dart';
 import '../../providers.dart';
 import '../common.dart';
 import '../data/data_screen.dart';
+import '../motion.dart';
 import '../recommendations/recommendations.dart';
 
 /// Главный экран журнала: тренировка дня, незавершённая сессия, свободная тренировка, история.
@@ -41,7 +42,7 @@ class TodayScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(12),
         children: [
           BackupReminderCard(onOpen: () => context.push('/data')),
-          for (final r in newRecs) RecommendationCard(r),
+          for (final r in newRecs) Appear(key: ValueKey('rec-${r.rec.id}'), child: RecommendationCard(r)),
           if (inProgress != null)
             Card(
               color: Theme.of(context).colorScheme.primaryContainer,
@@ -82,8 +83,11 @@ class TodayScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            for (final d in days)
-              Card(
+            for (final (i, d) in days.indexed)
+              Appear(
+                key: ValueKey('day-${d.id}'),
+                index: i,
+                child: Card(
                 child: ListTile(
                   leading: Icon(doneDayIds.contains(d.id)
                       ? Icons.check_circle
@@ -96,7 +100,7 @@ class TodayScreen extends ConsumerWidget {
                           ? FilledButton(onPressed: () => start(d), child: const Text('Начать'))
                           : OutlinedButton(onPressed: () => start(d), child: const Text('Начать'))),
                 ),
-              ),
+              )),
           ],
           const SizedBox(height: 4),
           OutlinedButton.icon(

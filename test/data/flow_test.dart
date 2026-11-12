@@ -184,4 +184,29 @@ void main() {
     await planner.removeExercise(p.pdeId);
     expect((await planner.dayExercises(days[1].id)).length, 1);
   });
+
+  test('рекорд 1ПМ: первый подход не рекорд, превышение максимума — рекорд', () async {
+    final squat = await exerciseId('Приседания со штангой');
+    Future<(int, int)> free(DateTime date) async {
+      final sid = await journal.startFreeSession(date);
+      final seId = await journal.addExerciseToSession(sid, squat);
+      final set = await (db.select(db.setLogs)..where((s) => s.sessionExerciseId.equals(seId))).getSingle();
+      return (sid, set.id);
+    }
+
+    final (s1, set1) = await free(DateTime.utc(2026, 11, 3));
+    expect(await journal.saveSet(set1, weightKg: 100, reps: 5, rir: 0), isNull); // истории ещё нет
+    await journal.finishSession(s1);
+
+    final (s2, set2) = await free(DateTime.utc(2026, 11, 10));
+    expect(await journal.saveSet(set2, weightKg: 100, reps: 5, rir: 0), isNull); // повтор максимума
+    expect(await journal.saveSet(set2, weightKg: 102.5, reps: 5, rir: 0), closeTo(102.5 * (1 + 5 / 30), 1e-6));
+    var view = (await journal.watchSessionExercises(s2).first).single;
+    expect(view.priorBestE1rm, closeTo(100 * (1 + 5 / 30), 1e-6));
+    expect(view.recordSetId, set2);
+    // Правка вниз снимает отметку.
+    expect(await journal.saveSet(set2, weightKg: 90, reps: 5, rir: 0), isNull);
+    view = (await journal.watchSessionExercises(s2).first).single;
+    expect(view.recordSetId, isNull);
+  });
 }

@@ -13,6 +13,7 @@ import '../../domain/planning.dart';
 import '../../domain/strength.dart';
 import '../../providers.dart';
 import '../common.dart';
+import '../motion.dart';
 import '../recommendations/recommendations.dart';
 import '../reference/exercises_screen.dart';
 import '../ruler_picker.dart';
@@ -116,7 +117,12 @@ class SessionScreen extends ConsumerWidget {
                     for (final r in ref.watch(newRecommendationsProvider).value ?? const <RecommendationView>[])
                       if (list.any((e) => e.plan?.programDayExerciseId == r.rec.programDayExerciseId))
                         RecommendationCard(r),
-                    for (final e in list) _ExerciseCard(view: e, step: step, timerEnabled: inProgress),
+                    for (final (i, e) in list.indexed)
+                      Appear(
+                        key: ValueKey(e.se.id),
+                        index: i,
+                        child: _ExerciseCard(view: e, step: step, timerEnabled: inProgress),
+                      ),
                   ],
                 );
               },
@@ -232,20 +238,26 @@ class _ExerciseCard extends ConsumerWidget {
               _SetRow(
                 set: s,
                 label: s.isWarmup ? 'Р' : '${++workNo}',
+                isRecord: s.id == view.recordSetId,
                 targetRir: plan?.targetRir,
                 onPlanned: () async {
                   HapticFeedback.mediumImpact();
-                  await journal.completeAsPlanned(s.id, targetRir: plan?.targetRir);
+                  final record = await journal.completeAsPlanned(s.id, targetRir: plan?.targetRir);
                   startRest();
+                  if (record != null && context.mounted) showRecordCelebration(context, view.exercise.name, record);
                 },
                 onEdit: () async {
-                  final saved = await showModalBottomSheet<bool>(
+                  final saved = await showModalBottomSheet<SetSaveResult>(
                     context: context,
                     isScrollControlled: true,
                     showDragHandle: true,
                     builder: (_) => SetEditor(set: s, step: step, targetRir: plan?.targetRir, previous: _previous(sets, s)),
                   );
-                  if (saved == true && !s.isWarmup) startRest();
+                  if (saved == null) return;
+                  if (!saved.warmup) startRest();
+                  if (saved.record != null && context.mounted) {
+                    showRecordCelebration(context, view.exercise.name, saved.record!);
+                  }
                 },
               ),
           ],
@@ -272,8 +284,10 @@ class _SetRow extends StatelessWidget {
     required this.targetRir,
     required this.onPlanned,
     required this.onEdit,
+    this.isRecord = false,
   });
   final SetLog set;
+  final bool isRecord;
   final String label;
   final int? targetRir;
   final VoidCallback onPlanned;
@@ -337,9 +351,10 @@ class _SetRow extends StatelessWidget {
                         key: ValueKey(main),
                         style: done ? t.titleMedium : t.titleMedium?.copyWith(color: Theme.of(context).hintColor)),
                   ),
-                  if (done && (status != null || set.weightReduced || set.note != null || set.isWarmup))
+                  if (done && (status != null || set.weightReduced || set.note != null || set.isWarmup || isRecord))
                     Text(
                       [
+                        if (isRecord) 'рекорд 1ПМ ${formatKg((set.e1rmKg! * 10).round() / 10)} кг',
                         if (set.isWarmup) 'разминка',
                         if (status != null) status.label.toLowerCase(),
                         if (set.weightReduced) 'вес снижен',
@@ -361,13 +376,29 @@ class _SetRow extends StatelessWidget {
               )
             else if (!done && !skipped)
               SizedBox(height: 48, child: FilledButton.tonal(onPressed: onEdit, child: const Text('Ввести')))
-            else
+            else ...[
+              AnimatedScale(
+                scale: isRecord ? 1 : 0,
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.elasticOut,
+                child: const Icon(Icons.emoji_events, color: Color(0xFFF2B01E)),
+              ),
               IconButton(onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+/// Итог сохранения подхода в редакторе.
+class SetSaveResult {
+  const SetSaveResult({required this.warmup, this.record});
+  final bool warmup;
+
+  /// Новый расчётный 1ПМ, если подход побил рекорд упражнения.
+  final double? record;
 }
 
 /// Редактор подхода с крупными кнопками ± (ввод одной рукой).
@@ -408,7 +439,7 @@ class _SetEditorState extends ConsumerState<SetEditor> {
   }
 
   Future<void> _save() async {
-    await ref.read(journalRepoProvider).saveSet(
+    final record = await ref.read(journalRepoProvider).saveSet(
           widget.set.id,
           weightKg: _weight,
           reps: _reps,
@@ -416,7 +447,7 @@ class _SetEditorState extends ConsumerState<SetEditor> {
           isWarmup: _warmup,
           note: _note.text,
         );
-    if (mounted) Navigator.of(context).pop(true);
+    if (mounted) Navigator.of(context).pop(SetSaveResult(warmup: _warmup, record: record));
   }
 
   @override
@@ -511,7 +542,7 @@ class _SetEditorState extends ConsumerState<SetEditor> {
                 TextButton(
                   onPressed: () async {
                     await journal.skipSet(s.id);
-                    if (context.mounted) Navigator.of(context).pop(false);
+                    if (context.mounted) Navigator.of(context).pop();
                   },
                   child: const Text('Пропустить'),
                 ),
@@ -519,14 +550,14 @@ class _SetEditorState extends ConsumerState<SetEditor> {
                   TextButton(
                     onPressed: () async {
                       await journal.resetSet(s.id);
-                      if (context.mounted) Navigator.of(context).pop(false);
+                      if (context.mounted) Navigator.of(context).pop();
                     },
                     child: const Text('Сбросить'),
                   ),
                 TextButton(
                   onPressed: () async {
                     await journal.deleteSet(s.id);
-                    if (context.mounted) Navigator.of(context).pop(false);
+                    if (context.mounted) Navigator.of(context).pop();
                   },
                   child: const Text('Удалить подход'),
                 ),

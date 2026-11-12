@@ -127,16 +127,19 @@ class JournalRepo {
         final s = r.readTable(db.setLogs);
         bySe.putIfAbsent(s.sessionExerciseId, () => []).add(s);
       }
-      return [
-        for (final r in rows)
-          SessionExerciseView(
-            r.readTable(db.sessionExercises),
-            r.readTable(db.exercises),
-            r.readTableOrNull(db.exerciseWeekPlans),
-            r.readTableOrNull(db.programDayExercises)?.restSec,
-            bySe[r.readTable(db.sessionExercises).id] ?? const [],
-          ),
-      ];
+      final out = <SessionExerciseView>[];
+      for (final r in rows) {
+        final se = r.readTable(db.sessionExercises);
+        out.add(SessionExerciseView(
+          se,
+          r.readTable(db.exercises),
+          r.readTableOrNull(db.exerciseWeekPlans),
+          r.readTableOrNull(db.programDayExercises)?.restSec,
+          bySe[se.id] ?? const [],
+          priorBestE1rm: await bestE1rm(se.exerciseId, exceptSessionId: sessionId),
+        ));
+      }
+      return out;
     });
   }
 
@@ -183,8 +186,21 @@ class JournalRepo {
     await _refreshExercise(s.sessionExerciseId);
   }
 
+  /// Лучший расчётный 1ПМ упражнения по всем подходам, кроме указанного подхода или сессии.
+  Future<double?> bestE1rm(int exerciseId, {int? exceptSetId, int? exceptSessionId}) async {
+    final row = await db.customSelect(
+      'SELECT MAX(s.e1rm_kg) AS m FROM set_logs s '
+      'JOIN session_exercises se ON se.id = s.session_exercise_id '
+      'WHERE se.exercise_id = ? AND s.id != ? AND se.session_id != ?',
+      variables: [Variable.withInt(exerciseId), Variable.withInt(exceptSetId ?? -1), Variable.withInt(exceptSessionId ?? -1)],
+      readsFrom: {db.setLogs, db.sessionExercises},
+    ).getSingle();
+    return row.read<double?>('m');
+  }
+
   /// Сохраняет факт подхода. Статус, флаг «вес снижен» и расчётный 1ПМ считает domain.
-  Future<void> saveSet(
+  /// Возвращает новый расчётный 1ПМ, если подход побил прежний рекорд упражнения, иначе null.
+  Future<double?> saveSet(
     int setId, {
     required double? weightKg,
     required int reps,
@@ -199,6 +215,8 @@ class JournalRepo {
     final e1rm = warm || weightKg == null
         ? null
         : epley1rm(weight: weightKg, reps: reps, rir: rir, useRir: settings.e1rmUseRir);
+    final se = await (db.select(db.sessionExercises)..where((x) => x.id.equals(s.sessionExerciseId))).getSingle();
+    final prior = e1rm == null ? null : await bestE1rm(se.exerciseId, exceptSetId: setId);
     await (db.update(db.setLogs)..where((x) => x.id.equals(setId))).write(SetLogsCompanion(
       weightKg: Value(weightKg),
       reps: Value(reps),
@@ -210,12 +228,13 @@ class JournalRepo {
       note: note == null ? const Value.absent() : Value(note.trim().isEmpty ? null : note.trim()),
     ));
     await _refreshExercise(s.sessionExerciseId);
+    return e1rm != null && prior != null && e1rm > prior + 1e-6 ? e1rm : null;
   }
 
   /// «Выполнено по плану» — одно нажатие: факт = план, RIR = целевой.
-  Future<void> completeAsPlanned(int setId, {int? targetRir}) async {
+  Future<double?> completeAsPlanned(int setId, {int? targetRir}) async {
     final s = await (db.select(db.setLogs)..where((x) => x.id.equals(setId))).getSingle();
-    await saveSet(setId, weightKg: s.plannedWeightKg, reps: s.plannedReps ?? 0, rir: targetRir);
+    return saveSet(setId, weightKg: s.plannedWeightKg, reps: s.plannedReps ?? 0, rir: targetRir);
   }
 
   Future<void> skipSet(int setId) async {
@@ -384,7 +403,22 @@ class SessionSummary {
 }
 
 class SessionExerciseView {
-  SessionExerciseView(this.se, this.exercise, this.plan, this.restSec, this.sets);
+  SessionExerciseView(this.se, this.exercise, this.plan, this.restSec, this.sets, {this.priorBestE1rm});
+
+  /// Лучший расчётный 1ПМ упражнения в других сессиях — для отметки рекорда.
+  final double? priorBestE1rm;
+
+  /// Подход-рекорд этой сессии: лучший 1ПМ, превысивший прежний максимум.
+  int? get recordSetId {
+    final prior = priorBestE1rm;
+    if (prior == null) return null;
+    SetLog? best;
+    for (final s in sets) {
+      final e = s.e1rmKg;
+      if (e != null && e > prior + 1e-6 && (best == null || e > best.e1rmKg!)) best = s;
+    }
+    return best?.id;
+  }
   final SessionExercise se;
   final Exercise exercise;
   final ExerciseWeekPlan? plan;
