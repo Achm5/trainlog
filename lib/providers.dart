@@ -4,10 +4,12 @@ import 'data/analytics_repo.dart';
 import 'data/app_state.dart';
 import 'data/database.dart';
 import 'data/journal_repo.dart';
+import 'data/nutrition_repo.dart';
 import 'data/planner_repo.dart';
 import 'data/reference_repo.dart';
 import 'data/rules_repo.dart';
 import 'services/notifications.dart';
+import 'services/off_client.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => throw StateError('База открывается в main()'));
 
@@ -84,3 +86,17 @@ final newRecommendationsProvider = StreamProvider<List<RecommendationView>>(
 final allRecommendationsProvider =
     StreamProvider<List<RecommendationView>>((ref) => ref.watch(rulesRepoProvider).watchRecommendations());
 final rulesProvider = StreamProvider<List<Rule>>((ref) => ref.watch(rulesRepoProvider).watchRules());
+
+final nutritionRepoProvider = Provider<NutritionRepo>((ref) => NutritionRepo(ref.watch(databaseProvider)));
+final offClientProvider = Provider<OffClient>((ref) => OffClient());
+final foodDayProvider =
+    StreamProvider.family<List<FoodEntry>, String>((ref, d) => ref.watch(nutritionRepoProvider).watchDay(d));
+final targetProvider =
+    StreamProvider.family<NutritionTarget?, String>((ref, d) => ref.watch(nutritionRepoProvider).watchTarget(d));
+final dayWeightProvider =
+    StreamProvider.family<BodyWeightLog?, String>((ref, d) => ref.watch(nutritionRepoProvider).watchWeight(d));
+final weightsProvider =
+    StreamProvider.family<List<BodyWeightLog>, String?>((ref, from) => ref.watch(nutritionRepoProvider).watchWeights(fromYmd: from));
+final productsProvider =
+    StreamProvider.family<List<Product>, String>((ref, q) => ref.watch(nutritionRepoProvider).watchProducts(query: q));
+final productProvider = StreamProvider.family<Product?, int>((ref, id) => ref.watch(nutritionRepoProvider).watchProduct(id));

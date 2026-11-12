@@ -4,6 +4,8 @@ import 'package:material_ui/material_ui.dart';
 import 'features/analytics/analytics_screen.dart';
 import 'features/journal/session_screen.dart';
 import 'features/journal/today_screen.dart';
+import 'features/nutrition/nutrition_screen.dart';
+import 'features/nutrition/profile_screen.dart';
 import 'features/planner/exercise_plan_screen.dart';
 import 'features/planner/program_form_screen.dart';
 import 'features/planner/program_screen.dart';
@@ -31,6 +33,7 @@ final appRouter = GoRouter(
     GoRoute(path: '/settings', builder: (c, s) => const SettingsScreen()),
     GoRoute(path: '/recommendations', builder: (c, s) => const RecommendationsScreen()),
     GoRoute(path: '/rules', builder: (c, s) => const RulesScreen()),
+    GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
   ],
 );
 
@@ -74,7 +77,7 @@ class _HomeShellState extends State<HomeShell> {
       body: SafeArea(
         child: IndexedStack(
           index: _index,
-          children: const [TodayScreen(), ProgramsScreen(), AnalyticsScreen(), MoreScreen()],
+          children: const [TodayScreen(), ProgramsScreen(), AnalyticsScreen(), NutritionScreen(), MoreScreen()],
         ),
       ),
       bottomNavigationBar: NavigationBar(
@@ -84,6 +87,7 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(icon: Icon(Icons.fitness_center), label: 'Журнал'),
           NavigationDestination(icon: Icon(Icons.calendar_month), label: 'План'),
           NavigationDestination(icon: Icon(Icons.show_chart), label: 'Аналитика'),
+          NavigationDestination(icon: Icon(Icons.restaurant), label: 'Питание'),
           NavigationDestination(icon: Icon(Icons.menu), label: 'Ещё'),
         ],
       ),
@@ -99,6 +103,12 @@ class MoreScreen extends StatelessWidget {
     return ListView(
       children: [
         const ListTile(title: Text('Справочники и настройки', style: TextStyle(fontWeight: FontWeight.bold))),
+        ListTile(
+          leading: const Icon(Icons.person_outline),
+          title: const Text('Профиль и питание'),
+          subtitle: const Text('Пол, возраст, рост, активность, цель и БЖУ'),
+          onTap: () => context.push('/profile'),
+        ),
         ListTile(
           leading: const Icon(Icons.list_alt),
           title: const Text('Упражнения'),

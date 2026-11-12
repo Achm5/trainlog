@@ -212,3 +212,77 @@ class AdherenceChart extends StatelessWidget {
     );
   }
 }
+
+/// Вес тела: точки взвешиваний и сглаженный тренд.
+class WeightChart extends StatelessWidget {
+  const WeightChart({super.key, required this.logs});
+  final List<BodyWeightLog> logs;
+
+  @override
+  Widget build(BuildContext context) {
+    final origin = parseYmd(logs.first.date);
+    double x(String d) => daysBetween(origin, parseYmd(d)).toDouble();
+    var minY = double.infinity, maxY = 0.0;
+    for (final l in logs) {
+      for (final v in [l.weightKg, l.trendKg ?? l.weightKg]) {
+        if (v < minY) minY = v;
+        if (v > maxY) maxY = v;
+      }
+    }
+    final maxX = x(logs.last.date);
+    final scheme = Theme.of(context).colorScheme;
+    return LineChart(
+      LineChartData(
+        minX: 0,
+        maxX: maxX < 1 ? 1 : maxX,
+        minY: (minY - 1).floorToDouble(),
+        maxY: (maxY + 1).ceilToDouble(),
+        gridData: const FlGridData(drawVerticalLine: false),
+        borderData: FlBorderData(show: false),
+        lineTouchData: const LineTouchData(enabled: false),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(),
+          rightTitles: const AxisTitles(),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (v, meta) => Text(v.round().toString(), style: Theme.of(context).textTheme.labelSmall),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              interval: maxX <= 7 ? 1 : (maxX / 5).ceilToDouble(),
+              getTitlesWidget: (v, meta) {
+                if (v != v.roundToDouble()) return const SizedBox.shrink();
+                final d = addDays(origin, v.round());
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text('${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}',
+                      style: Theme.of(context).textTheme.labelSmall),
+                );
+              },
+            ),
+          ),
+        ),
+        lineBarsData: [
+          LineChartBarData(
+            spots: [for (final l in logs) FlSpot(x(l.date), l.weightKg)],
+            color: scheme.outline,
+            barWidth: 0,
+            dotData: const FlDotData(show: true),
+          ),
+          LineChartBarData(
+            spots: [for (final l in logs) if (l.trendKg != null) FlSpot(x(l.date), l.trendKg!)],
+            color: scheme.primary,
+            barWidth: 3,
+            isCurved: true,
+            dotData: const FlDotData(show: false),
+          ),
+        ],
+      ),
+    );
+  }
+}

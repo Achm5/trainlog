@@ -99,6 +99,21 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          Builder(builder: (context) {
+            final logs = ref.watch(weightsProvider(_range().from)).value ?? const <BodyWeightLog>[];
+            if (logs.length < 2) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Вес тела', style: Theme.of(context).textTheme.titleMedium),
+                Text('День × кг: точки — взвешивания, линия — сглаженный тренд. '
+                    'Сейчас: ${formatKg(logs.last.weightKg)} кг, тренд ${(logs.last.trendKg ?? logs.last.weightKg).toStringAsFixed(1).replaceAll('.', ',')} кг.'),
+                const SizedBox(height: 8),
+                SizedBox(height: 200, child: WeightChart(logs: logs)),
+                const Divider(height: 32),
+              ],
+            );
+          }),
           AsyncView(
             value: stats,
             builder: (rows) {
