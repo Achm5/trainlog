@@ -99,7 +99,7 @@ class _DataScreenState extends ConsumerState<DataScreen> {
 
   Future<void> _import() => _run(() async {
         final picked = await FilePicker.pickFiles(type: FileType.any);
-        final path = picked?.files.single.path;
+        final path = picked.isEmpty ? null : picked.first.path;
         if (path == null || !mounted) return;
         if (!await confirm(context, 'Заменить все данные?',
             message: 'Текущие программы, журнал и дневник будут заменены содержимым файла '
