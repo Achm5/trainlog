@@ -7,7 +7,6 @@ import '../../domain/dates.dart';
 import '../../domain/planning.dart';
 import '../../providers.dart';
 import '../../data/database.dart';
-import '../common.dart';
 import 'analytics_charts.dart';
 
 enum AnalyticsPeriod {
@@ -49,7 +48,8 @@ const chartPalette = [
   Color(0xFF8E5BD9),
 ];
 
-/// Аналитика: рост расчётного 1ПМ по неделям (раздел 4.3 ТЗ).
+/// Аналитика по темам: сила, объём, выполнение плана, вес тела.
+/// Сверху — сводка периода, в каждой вкладке — вывод одной фразой, график и расшифровка.
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
 
@@ -82,171 +82,431 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     }
   }
 
+  String _pct(double v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(1).replaceAll('.', ',')}%';
+
   @override
   Widget build(BuildContext context) {
-    final stats = ref.watch(_statsProvider(_range()));
-    return Scaffold(
-      appBar: AppBar(title: const Text('Аналитика')),
-      body: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SegmentedButton<AnalyticsPeriod>(
-              showSelectedIcon: false,
-              segments: [for (final p in AnalyticsPeriod.values) ButtonSegment(value: p, label: Text(p.label))],
-              selected: {_period},
-              onSelectionChanged: (s) => setState(() => _period = s.first),
+    final range = _range();
+    final rows = ref.watch(_statsProvider(range)).value ?? const <ExerciseStatView>[];
+    final volume = ref.watch(_volumeProvider(range)).value ?? const <WeeklyMuscleVolumeRow>[];
+    final weights = ref.watch(weightsProvider(range.from)).value ?? const <BodyWeightLog>[];
+    final groups = ref.watch(muscleGroupsProvider).value ?? const <MuscleGroup>[];
+    final history = ref.watch(historyProvider).value ?? const [];
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    // ---- Сила ----
+    final withE1rm = rows.where((r) => r.stat.bestE1rmKg != null).toList();
+    final counts = <int, int>{};
+    final names = <int, String>{};
+    final compound = <int>{};
+    final series = <int, List<ExerciseStatView>>{};
+    for (final r in withE1rm) {
+      counts[r.exercise.id] = (counts[r.exercise.id] ?? 0) + 1;
+      names[r.exercise.id] = r.exercise.name;
+      if (r.exercise.kind == 'compound') compound.add(r.exercise.id);
+      series.putIfAbsent(r.exercise.id, () => []).add(r);
+    }
+    final ids = counts.keys.toList()
+      ..sort((a, b) {
+        final ca = compound.contains(a) ? 0 : 1, cb = compound.contains(b) ? 0 : 1;
+        if (ca != cb) return ca - cb;
+        return counts[b]!.compareTo(counts[a]!);
+      });
+    final selected = (_selected ?? ids.take(3).toSet()).where(ids.contains).toSet();
+    final colorOf = {for (var i = 0; i < ids.length; i++) ids[i]: chartPalette[i % chartPalette.length]};
+    // Рост за период: последний 1ПМ к первому.
+    double? growth(int id) {
+      final s = series[id]!;
+      final first = s.first.stat.bestE1rmKg!, last = s.last.stat.bestE1rmKg!;
+      return s.length < 2 || first <= 0 ? null : (last - first) / first * 100;
+    }
+
+    final growing = [for (final id in ids) if ((growth(id) ?? 0) > 0.5) id];
+    final falling = [for (final id in ids) if ((growth(id) ?? 0) < -0.5) id];
+    int? bestId;
+    for (final id in ids) {
+      final g = growth(id);
+      if (g != null && (bestId == null || g > growth(bestId)!)) bestId = id;
+    }
+
+    // ---- План ----
+    var done = 0, partial = 0, failed = 0;
+    for (final r in rows) {
+      done += r.stat.setsDone;
+      partial += r.stat.setsPartial;
+      failed += r.stat.setsFailed;
+    }
+    final totalSets = done + partial + failed;
+    final donePct = totalSets == 0 ? null : done / totalSets * 100;
+
+    // ---- Сводка ----
+    final sessions = history
+        .where((h) =>
+            h.session.status == 'completed' &&
+            (range.from == null || h.session.date.compareTo(range.from!) >= 0) &&
+            (range.to == null || h.session.date.compareTo(range.to!) <= 0))
+        .length;
+    final weightDelta = weights.length < 2
+        ? null
+        : (weights.last.trendKg ?? weights.last.weightKg) - (weights.first.trendKg ?? weights.first.weightKg);
+
+    Widget empty(String text) =>
+        Padding(padding: const EdgeInsets.all(32), child: Text(text, textAlign: TextAlign.center));
+
+    Widget headline(String text, {IconData icon = Icons.insights, Color? color}) => Card(
+          color: scheme.surfaceContainerHigh,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(icon, color: color ?? scheme.primary),
+                const SizedBox(width: 12),
+                Expanded(child: Text(text, style: t.titleSmall)),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          Builder(builder: (context) {
-            final logs = ref.watch(weightsProvider(_range().from)).value ?? const <BodyWeightLog>[];
-            if (logs.length < 2) return const SizedBox.shrink();
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Вес тела', style: Theme.of(context).textTheme.titleMedium),
-                Text('День × кг: точки — взвешивания, линия — сглаженный тренд. '
-                    'Сейчас: ${formatKg(logs.last.weightKg)} кг, тренд ${(logs.last.trendKg ?? logs.last.weightKg).toStringAsFixed(1).replaceAll('.', ',')} кг.'),
-                const SizedBox(height: 8),
-                SizedBox(height: 200, child: WeightChart(logs: logs)),
-                const Divider(height: 32),
-              ],
-            );
-          }),
-          AsyncView(
-            value: stats,
-            builder: (rows) {
-              final withE1rm = rows.where((r) => r.stat.bestE1rmKg != null).toList();
-              if (withE1rm.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('За выбранный период нет завершённых тренировок. '
-                      'Графики появятся после первой завершённой сессии.', textAlign: TextAlign.center),
-                );
-              }
-              // Упражнения по убыванию числа недель с данными; базовые — первыми.
-              final counts = <int, int>{};
-              final names = <int, String>{};
-              final compound = <int>{};
-              for (final r in withE1rm) {
-                counts[r.exercise.id] = (counts[r.exercise.id] ?? 0) + 1;
-                names[r.exercise.id] = r.exercise.name;
-                if (r.exercise.kind == 'compound') compound.add(r.exercise.id);
-              }
-              final ids = counts.keys.toList()
-                ..sort((a, b) {
-                  final ca = compound.contains(a) ? 0 : 1, cb = compound.contains(b) ? 0 : 1;
-                  if (ca != cb) return ca - cb;
-                  return counts[b]!.compareTo(counts[a]!);
-                });
-              final selected = (_selected ?? ids.take(3).toSet()).where(ids.contains).toSet();
-              final colorOf = {for (var i = 0; i < ids.length; i++) ids[i]: chartPalette[i % chartPalette.length]};
+        );
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    Widget legend(List<(Color, String)> items) => Wrap(
+          spacing: 14,
+          runSpacing: 4,
+          children: [
+            for (final (c, label) in items)
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Рост расчётного 1ПМ', style: Theme.of(context).textTheme.titleMedium),
-                  const Text('Неделя × кг. Недели разгрузки затенены.'),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    children: [
-                      for (final id in ids)
-                        FilterChip(
-                          label: Text(names[id]!),
-                          selected: selected.contains(id),
-                          avatar: CircleAvatar(backgroundColor: colorOf[id], radius: 6),
-                          showCheckmark: false,
-                          onSelected: (on) => setState(() {
-                            final s = {...selected};
-                            on ? s.add(id) : s.remove(id);
-                            _selected = s;
-                          }),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 280,
-                    child: E1rmChart(rows: withE1rm.where((r) => selected.contains(r.exercise.id)).toList(), colorOf: colorOf),
-                  ),
-                  const SizedBox(height: 16),
-                  for (final id in ids.where(selected.contains))
-                    Builder(builder: (context) {
-                      final series = withE1rm.where((r) => r.exercise.id == id).toList();
-                      final last = series.last.stat;
-                      final d = last.e1rmDeltaPct;
-                      return ListTile(
-                        dense: true,
-                        leading: CircleAvatar(backgroundColor: colorOf[id], radius: 8),
-                        title: Text(names[id]!),
-                        subtitle: Text('Неделя с ${ruDate(parseYmd(last.weekStart))}'
-                            '${d == null ? '' : ' · ${d >= 0 ? '+' : ''}${d.toStringAsFixed(1).replaceAll('.', ',')}% к прошлой'}'),
-                        trailing: Text('${formatKg(last.bestE1rmKg)} кг', style: Theme.of(context).textTheme.titleMedium),
-                      );
-                    }),
-                  const Divider(height: 32),
-                  Text('Просадки', style: Theme.of(context).textTheme.titleMedium),
-                  const Text('Изменение 1ПМ к прошлой неделе, %. Падение — красным, рост — зелёным.'),
-                  Builder(builder: (context) {
-                    final dipId = ids.contains(_dipsExerciseId) ? _dipsExerciseId! : ids.first;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        DropdownButton<int>(
-                          isExpanded: true,
-                          value: dipId,
-                          items: [for (final id in ids) DropdownMenuItem(value: id, child: Text(names[id]!))],
-                          onChanged: (v) => setState(() => _dipsExerciseId = v),
-                        ),
-                        SizedBox(
-                          height: 200,
-                          child: DipsChart(rows: withE1rm.where((r) => r.exercise.id == dipId).toList()),
-                        ),
-                      ],
-                    );
-                  }),
-                  const Divider(height: 32),
-                  Text('Объём по группам мышц', style: Theme.of(context).textTheme.titleMedium),
-                  const Text('Рабочие подходы в неделю с учётом долей. Пунктир — целевой коридор.'),
-                  Builder(builder: (context) {
-                    final groups = ref.watch(muscleGroupsProvider).value ?? const <MuscleGroup>[];
-                    final volume = ref.watch(_volumeProvider(_range())).value ?? const <WeeklyMuscleVolumeRow>[];
-                    if (groups.isEmpty) return const SizedBox.shrink();
-                    final group = groups.firstWhere((g) => g.id == _muscleId, orElse: () => groups.first);
-                    final weeks = continuousWeeks(rows.map((r) => r.stat.weekStart));
-                    final own = volume.where((v) => v.muscleGroupId == group.id).toList();
-                    final last = own.isEmpty ? null : own.last;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        DropdownButton<int>(
-                          isExpanded: true,
-                          value: group.id,
-                          items: [for (final g in groups) DropdownMenuItem(value: g.id, child: Text(g.name))],
-                          onChanged: (v) => setState(() => _muscleId = v),
-                        ),
-                        SizedBox(height: 200, child: VolumeChart(rows: own, group: group, allWeeks: weeks)),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text('Цель: ${group.targetSetsMin}–${group.targetSetsMax} подходов. '
-                              '${last == null ? 'Данных за период нет.' : 'Последняя неделя: ${formatKg(last.sets)} подх., тоннаж ${last.tonnageKg.round()} кг.'}'),
-                        ),
-                      ],
-                    );
-                  }),
-                  const Divider(height: 32),
-                  Text('Выполнение плана', style: Theme.of(context).textTheme.titleMedium),
-                  const Text('Доля подходов по статусам за неделю, %: зелёные / жёлтые / красные.'),
-                  const SizedBox(height: 8),
-                  SizedBox(height: 180, child: AdherenceChart(rows: rows)),
+                  Container(width: 10, height: 10, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+                  const SizedBox(width: 6),
+                  Text(label, style: t.bodySmall),
                 ],
+              ),
+          ],
+        );
+
+    // ================= Вкладка «Сила» =================
+    Widget strengthTab() {
+      if (withE1rm.isEmpty) {
+        return empty('За выбранный период нет завершённых тренировок. Графики появятся после первой сессии.');
+      }
+      final dipId = ids.contains(_dipsExerciseId) ? _dipsExerciseId! : (selected.isEmpty ? ids.first : selected.first);
+      return ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          headline(
+            growing.isEmpty && falling.isEmpty
+                ? 'Сила без заметных изменений за период.'
+                : 'Растут: ${growing.length} из ${ids.length} упражнений'
+                    '${falling.isEmpty ? '' : ', снижаются: ${falling.length}'}.'
+                    '${bestId == null || (growth(bestId) ?? 0) <= 0 ? '' : ' Лучший рост — ${names[bestId]} (${_pct(growth(bestId)!)}).'}',
+            icon: falling.length > growing.length ? Icons.trending_down : Icons.trending_up,
+            color: falling.length > growing.length ? colorBad : colorGood,
+          ),
+          const SizedBox(height: 8),
+          Text('Расчётный максимум (1ПМ) по неделям, кг', style: t.titleMedium),
+          Text('Линия вверх — становитесь сильнее. Серые полосы — недели разгрузки.', style: t.bodySmall),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 260,
+            child: E1rmChart(rows: withE1rm.where((r) => selected.contains(r.exercise.id)).toList(), colorOf: colorOf),
+          ),
+          const SizedBox(height: 12),
+          Text('Упражнения — нажмите, чтобы показать на графике', style: t.bodySmall),
+          for (final id in ids)
+            Builder(builder: (context) {
+              final last = series[id]!.last.stat;
+              final g = growth(id);
+              final on = selected.contains(id);
+              return ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                leading: Icon(on ? Icons.check_circle : Icons.circle_outlined, color: on ? colorOf[id] : scheme.outline),
+                title: Text(names[id]!),
+                subtitle: Text('${formatKg((last.bestE1rmKg! * 10).round() / 10)} кг'
+                    '${last.e1rmDeltaPct == null ? '' : ' · к прошлой неделе ${_pct(last.e1rmDeltaPct!)}'}'),
+                trailing: g == null
+                    ? null
+                    : Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (g < -0.5 ? colorBad : (g > 0.5 ? colorGood : scheme.outline)).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(_pct(g),
+                            style: t.labelLarge
+                                ?.copyWith(color: g < -0.5 ? colorBad : (g > 0.5 ? colorGood : scheme.onSurface))),
+                      ),
+                onTap: () => setState(() {
+                  final s = {...selected};
+                  on ? s.remove(id) : s.add(id);
+                  _selected = s;
+                  _dipsExerciseId = id;
+                }),
               );
-            },
+            }),
+          const Divider(height: 28),
+          Text('Изменение за неделю: ${names[dipId]}', style: t.titleMedium),
+          Text('Столбец вверх (зелёный) — 1ПМ вырос к прошлой неделе, вниз (красный) — просел, %.', style: t.bodySmall),
+          const SizedBox(height: 8),
+          SizedBox(height: 180, child: DipsChart(rows: series[dipId]!)),
+        ],
+      );
+    }
+
+    // ================= Вкладка «Объём» =================
+    Widget volumeTab() {
+      if (volume.isEmpty || groups.isEmpty) {
+        return empty('Нет данных об объёме за период. Они появятся после завершённой тренировки.');
+      }
+      final weeks = continuousWeeks(rows.map((r) => r.stat.weekStart));
+      final lastWeek = volume.map((v) => v.weekStart).reduce((a, b) => a.compareTo(b) > 0 ? a : b);
+      final lastByGroup = {for (final v in volume.where((v) => v.weekStart == lastWeek)) v.muscleGroupId: v};
+      var low = 0, ok = 0, high = 0;
+      for (final g in groups) {
+        final sets = lastByGroup[g.id]?.sets ?? 0;
+        if (sets < g.targetSetsMin) {
+          low++;
+        } else if (sets > g.targetSetsMax) {
+          high++;
+        } else {
+          ok++;
+        }
+      }
+      final group = groups.firstWhere((g) => g.id == _muscleId, orElse: () => groups.first);
+      return ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          headline('Неделя с ${ruDate(parseYmd(lastWeek))}: в целевом коридоре $ok из ${groups.length} групп, '
+              'ниже — $low, выше — $high.', icon: Icons.stacked_bar_chart),
+          const SizedBox(height: 8),
+          Text('Рабочие подходы за неделю по группам мышц', style: t.titleMedium),
+          Text('Светлая зона — целевой коридор. Нажмите на группу, чтобы увидеть её динамику.', style: t.bodySmall),
+          const SizedBox(height: 4),
+          for (final g in groups)
+            _VolumeRow(
+              group: g,
+              sets: lastByGroup[g.id]?.sets ?? 0,
+              selected: g.id == group.id,
+              onTap: () => setState(() => _muscleId = g.id),
+            ),
+          const SizedBox(height: 4),
+          legend(const [(colorGood, 'в коридоре'), (colorWarn, 'ниже цели'), (colorBad, 'выше цели')]),
+          const Divider(height: 28),
+          Text('${group.name}: подходы по неделям', style: t.titleMedium),
+          Text('Пунктир — коридор ${group.targetSetsMin}–${group.targetSetsMax} подходов.', style: t.bodySmall),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 180,
+            child: VolumeChart(
+                rows: volume.where((v) => v.muscleGroupId == group.id).toList(), group: group, allWeeks: weeks),
           ),
         ],
+      );
+    }
+
+    // ================= Вкладка «План» =================
+    Widget planTab() {
+      if (totalSets == 0) return empty('Нет подходов по плану за период. Свободные тренировки сюда не попадают.');
+      String share(int n) => '${(n / totalSets * 100).round()}%';
+      return ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          headline(
+            'По плану выполнено ${share(done)} подходов из $totalSets; частично — ${share(partial)}, провалено — ${share(failed)}.',
+            icon: Icons.fact_check_outlined,
+            color: donePct! >= 80 ? colorGood : (donePct >= 60 ? colorWarn : colorBad),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              height: 18,
+              child: Row(
+                children: [
+                  if (done > 0) Expanded(flex: done, child: Container(color: colorGood)),
+                  if (partial > 0) Expanded(flex: partial, child: Container(color: colorWarn)),
+                  if (failed > 0) Expanded(flex: failed, child: Container(color: colorBad)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          legend([
+            (colorGood, 'выполнено: $done'),
+            (colorWarn, 'частично (недобор 3–5): $partial'),
+            (colorBad, 'провал (недобор 6+): $failed'),
+          ]),
+          const Divider(height: 28),
+          Text('Доля подходов по статусам по неделям, %', style: t.titleMedium),
+          Text('Чем больше зелёного, тем точнее план попадает в ваши силы.', style: t.bodySmall),
+          const SizedBox(height: 8),
+          SizedBox(height: 200, child: AdherenceChart(rows: rows)),
+        ],
+      );
+    }
+
+    // ================= Вкладка «Вес» =================
+    Widget weightTab() {
+      if (weights.length < 2) {
+        return empty('Запишите вес хотя бы два раза на вкладке «Питание» — здесь появится график с трендом.');
+      }
+      final last = weights.last;
+      final trend = last.trendKg ?? last.weightKg;
+      final d = weightDelta!;
+      return ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          headline(
+            d.abs() < 0.2
+                ? 'Вес стабилен: тренд ${trend.toStringAsFixed(1).replaceAll('.', ',')} кг.'
+                : 'Тренд веса ${d > 0 ? 'вырос' : 'снизился'} на '
+                    '${d.abs().toStringAsFixed(1).replaceAll('.', ',')} кг за период и сейчас '
+                    '${trend.toStringAsFixed(1).replaceAll('.', ',')} кг.',
+            icon: Icons.monitor_weight_outlined,
+          ),
+          const SizedBox(height: 8),
+          Text('Вес тела, кг', style: t.titleMedium),
+          Text('Точки — взвешивания, линия — сглаженный тренд без суточных колебаний.', style: t.bodySmall),
+          const SizedBox(height: 8),
+          SizedBox(height: 240, child: WeightChart(logs: weights)),
+          const SizedBox(height: 8),
+          Text('Последнее взвешивание: ${formatKg(last.weightKg)} кг (${ruDate(parseYmd(last.date))}). '
+              'Взвешиваний за период: ${weights.length}.'),
+        ],
+      );
+    }
+
+    Widget tile(String label, String value, {Color? color, IconData? icon}) => Expanded(
+          child: Card(
+            margin: const EdgeInsets.all(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: t.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      if (icon != null) Padding(padding: const EdgeInsets.only(right: 4), child: Icon(icon, size: 18, color: color)),
+                      Flexible(child: Text(value, style: t.titleLarge?.copyWith(color: color), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Аналитика')),
+        body: Column(
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: SegmentedButton<AnalyticsPeriod>(
+                showSelectedIcon: false,
+                segments: [for (final p in AnalyticsPeriod.values) ButtonSegment(value: p, label: Text(p.label))],
+                selected: {_period},
+                onSelectionChanged: (s) => setState(() => _period = s.first),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              child: Row(
+                children: [
+                  tile('Тренировок', '$sessions'),
+                  tile('План', donePct == null ? '—' : '${donePct.round()}%',
+                      color: donePct == null ? null : (donePct >= 80 ? colorGood : (donePct >= 60 ? colorWarn : colorBad))),
+                  tile('Сила растёт', ids.isEmpty ? '—' : '${growing.length}/${ids.length}',
+                      icon: ids.isEmpty ? null : Icons.trending_up, color: growing.isEmpty ? null : colorGood),
+                  tile('Вес', weightDelta == null
+                      ? '—'
+                      : '${weightDelta >= 0 ? '+' : '−'}${weightDelta.abs().toStringAsFixed(1).replaceAll('.', ',')}'),
+                ],
+              ),
+            ),
+            const TabBar(tabs: [Tab(text: 'Сила'), Tab(text: 'Объём'), Tab(text: 'План'), Tab(text: 'Вес')]),
+            Expanded(child: TabBarView(children: [strengthTab(), volumeTab(), planTab(), weightTab()])),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Строка объёма группы мышц: столбик подходов на фоне целевого коридора.
+class _VolumeRow extends StatelessWidget {
+  const _VolumeRow({required this.group, required this.sets, required this.selected, required this.onTap});
+  final MuscleGroup group;
+  final double sets;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final scaleMax = [group.targetSetsMax * 1.3, sets * 1.05, 1.0].reduce((a, b) => a > b ? a : b);
+    final color = sets < group.targetSetsMin ? colorWarn : (sets > group.targetSetsMax ? colorBad : colorGood);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? scheme.surfaceContainerHigh : null,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            SizedBox(width: 118, child: Text(group.name, style: t.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            Expanded(
+              child: LayoutBuilder(builder: (context, c) {
+                final w = c.maxWidth;
+                double x(num v) => (v / scaleMax).clamp(0, 1).toDouble() * w;
+                return SizedBox(
+                  height: 16,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                              color: scheme.onSurface.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(4)),
+                        ),
+                      ),
+                      Positioned(
+                        left: x(group.targetSetsMin),
+                        width: x(group.targetSetsMax) - x(group.targetSetsMin),
+                        top: 0,
+                        bottom: 0,
+                        child: Container(color: scheme.onSurface.withValues(alpha: 0.16)),
+                      ),
+                      Positioned(
+                        left: 0,
+                        top: 3,
+                        bottom: 3,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 450),
+                          curve: Curves.easeOutCubic,
+                          width: x(sets),
+                          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ),
+            SizedBox(
+              width: 44,
+              child: Text(formatKg(sets), textAlign: TextAlign.right, style: t.titleSmall?.copyWith(color: color)),
+            ),
+          ],
+        ),
       ),
     );
   }

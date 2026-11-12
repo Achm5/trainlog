@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/app_state.dart';
 import '../../providers.dart';
 import '../../services/security.dart';
+import 'pin_pad.dart';
 
 /// Блокировка при запуске: если задан PIN, приложение открывается после PIN или биометрии.
 class LockGate extends ConsumerStatefulWidget {
@@ -16,18 +17,12 @@ class LockGate extends ConsumerStatefulWidget {
 }
 
 class _LockGateState extends ConsumerState<LockGate> {
-  final _pin = TextEditingController();
   final _bio = BiometricService();
+  String _pin = '';
   bool _unlocked = false;
   bool _bioEnabled = false;
   bool _bioTried = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _pin.dispose();
-    super.dispose();
-  }
+  bool _error = false;
 
   Future<void> _tryBiometric() async {
     if (await _bio.authenticate() && mounted) setState(() => _unlocked = true);
@@ -42,13 +37,26 @@ class _LockGateState extends ConsumerState<LockGate> {
     await _tryBiometric();
   }
 
-  void _check(String hash) {
-    if (pinHash(_pin.text) == hash) {
+  /// Длина PIN неизвестна (хранится только хэш), поэтому проверяем после каждой цифры начиная с четвёртой.
+  void _digit(String d, String hash) {
+    if (_pin.length >= 8) return;
+    final next = _pin + d;
+    if (next.length >= 4 && pinHash(next) == hash) {
       setState(() => _unlocked = true);
-    } else {
-      setState(() => _error = 'Неверный PIN');
-      _pin.clear();
+      return;
     }
+    if (next.length == 8) {
+      HapticFeedback.heavyImpact();
+      setState(() {
+        _pin = '';
+        _error = true;
+      });
+      return;
+    }
+    setState(() {
+      _pin = next;
+      _error = false;
+    });
   }
 
   @override
@@ -61,34 +69,35 @@ class _LockGateState extends ConsumerState<LockGate> {
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.lock_outline, size: 48),
-                const SizedBox(height: 16),
-                Text('Введите PIN', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _pin,
-                  autofocus: true,
-                  obscureText: true,
-                  textAlign: TextAlign.center,
-                  keyboardType: TextInputType.number,
-                  maxLength: 8,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(errorText: _error, counterText: ''),
-                  onSubmitted: (_) => _check(hash),
-                ),
+                const Icon(Icons.lock_outline, size: 40),
                 const SizedBox(height: 12),
-                FilledButton(onPressed: () => _check(hash), child: const Text('Войти')),
-                if (_bioEnabled)
-                  TextButton.icon(
-                    onPressed: _tryBiometric,
-                    icon: const Icon(Icons.fingerprint),
-                    label: const Text('Биометрия'),
-                  ),
+                Text(_error ? 'Неверный PIN' : 'Введите PIN',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(color: _error ? Theme.of(context).colorScheme.error : null)),
+                const SizedBox(height: 24),
+                PinDots(length: _pin.length, error: _error),
+                const SizedBox(height: 24),
+                PinPad(
+                  onDigit: (d) => _digit(d, hash),
+                  onBackspace: () => setState(() {
+                    _error = false;
+                    if (_pin.isNotEmpty) _pin = _pin.substring(0, _pin.length - 1);
+                  }),
+                  extra: _bioEnabled
+                      ? IconButton(
+                          iconSize: 36,
+                          tooltip: 'Биометрия',
+                          icon: const Icon(Icons.fingerprint),
+                          onPressed: _tryBiometric,
+                        )
+                      : null,
+                ),
               ],
             ),
           ),

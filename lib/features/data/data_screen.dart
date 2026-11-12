@@ -17,6 +17,7 @@ import '../../domain/dates.dart';
 import '../../providers.dart';
 import '../../services/security.dart';
 import '../common.dart';
+import 'pin_pad.dart';
 
 final lastBackupProvider = FutureProvider<DateTime?>((ref) async {
   final v = await ref.watch(appStateProvider).get(stateLastBackupAt);
@@ -146,27 +147,7 @@ class _DataScreenState extends ConsumerState<DataScreen> {
     if (mounted) setState(() => _bioEnabled = false);
   }
 
-  Future<String?> _askPin(String title) {
-    final c = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          inputFormatters: intInput,
-          maxLength: 8,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Готово')),
-        ],
-      ),
-    );
-  }
+  Future<String?> _askPin(String title) => askPinPad(context, title);
 
   @override
   Widget build(BuildContext context) {
