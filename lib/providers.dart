@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/analytics_repo.dart';
+import 'data/app_state.dart';
 import 'data/database.dart';
 import 'data/journal_repo.dart';
 import 'data/planner_repo.dart';
 import 'data/reference_repo.dart';
+import 'data/rules_repo.dart';
 import 'services/notifications.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => throw StateError('База открывается в main()'));
@@ -73,3 +75,12 @@ class RestTimer extends Notifier<DateTime?> {
 }
 
 final restTimerProvider = NotifierProvider<RestTimer, DateTime?>(RestTimer.new);
+
+final appStateProvider = Provider<AppStateStore>((ref) => MemoryAppState());
+final rulesRepoProvider =
+    Provider<RulesRepo>((ref) => RulesRepo(ref.watch(databaseProvider), ref.watch(appStateProvider)));
+final newRecommendationsProvider = StreamProvider<List<RecommendationView>>(
+    (ref) => ref.watch(rulesRepoProvider).watchRecommendations(status: 'new'));
+final allRecommendationsProvider =
+    StreamProvider<List<RecommendationView>>((ref) => ref.watch(rulesRepoProvider).watchRecommendations());
+final rulesProvider = StreamProvider<List<Rule>>((ref) => ref.watch(rulesRepoProvider).watchRules());

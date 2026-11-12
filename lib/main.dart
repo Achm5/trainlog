@@ -6,7 +6,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'app.dart';
+import 'data/app_state.dart';
 import 'data/database.dart';
+import 'data/rules_repo.dart';
 import 'providers.dart';
 import 'services/notifications.dart';
 
@@ -15,5 +17,17 @@ Future<void> main() async {
   await NotificationService.instance.init();
   final dir = await getApplicationSupportDirectory();
   final db = AppDatabase.file(File(p.join(dir.path, dbFileName)));
-  runApp(ProviderScope(overrides: [databaseProvider.overrideWithValue(db)], child: const TrainLogApp()));
+  final state = FileAppState(File(p.join(dir.path, 'app_state.json')));
+
+  // Закрытие недели — при первом запуске на новой неделе; пропущенные недели по очереди.
+  try {
+    await RulesRepo(db, state).closeWeeks();
+  } catch (e) {
+    debugPrint('Закрытие недели не выполнено: $e');
+  }
+
+  runApp(ProviderScope(
+    overrides: [databaseProvider.overrideWithValue(db), appStateProvider.overrideWithValue(state)],
+    child: const TrainLogApp(),
+  ));
 }

@@ -6,6 +6,7 @@ import '../../data/database.dart';
 import '../../domain/dates.dart';
 import '../../providers.dart';
 import '../common.dart';
+import '../recommendations/recommendations.dart';
 
 /// Главный экран журнала: тренировка дня, незавершённая сессия, свободная тренировка, история.
 class TodayScreen extends ConsumerWidget {
@@ -18,6 +19,7 @@ class TodayScreen extends ConsumerWidget {
     final program = ref.watch(activeProgramProvider).value;
     final history = ref.watch(historyProvider).value ?? const [];
     final now = today();
+    final newRecs = ref.watch(newRecommendationsProvider).value ?? const [];
 
     final weeks = program == null ? const <ProgramWeek>[] : ref.watch(programWeeksProvider(program.id)).value ?? const [];
     final days = program == null ? const <ProgramDay>[] : ref.watch(programDaysProvider(program.id)).value ?? const [];
@@ -37,6 +39,7 @@ class TodayScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
+          for (final r in newRecs) RecommendationCard(r),
           if (inProgress != null)
             Card(
               color: Theme.of(context).colorScheme.primaryContainer,

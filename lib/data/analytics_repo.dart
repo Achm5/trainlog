@@ -18,6 +18,14 @@ class AnalyticsRepo {
     return q.watch().map((rows) =>
         [for (final r in rows) ExerciseStatView(r.readTable(db.weeklyExerciseStats), r.readTable(db.exercises))]);
   }
+
+  /// Недельный объём по группам мышц.
+  Stream<List<WeeklyMuscleVolumeRow>> watchMuscleVolume({String? fromYmd, String? toYmd}) {
+    final q = db.select(db.weeklyMuscleVolume)..orderBy([(v) => OrderingTerm.asc(v.weekStart)]);
+    if (fromYmd != null) q.where((v) => v.weekStart.isBiggerOrEqualValue(fromYmd));
+    if (toYmd != null) q.where((v) => v.weekStart.isSmallerOrEqualValue(toYmd));
+    return q.watch();
+  }
 }
 
 class ExerciseStatView {

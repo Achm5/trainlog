@@ -7,11 +7,13 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../data/database.dart';
 import '../../data/journal_repo.dart';
+import '../../data/rules_repo.dart';
 import '../../domain/dates.dart';
 import '../../domain/planning.dart';
 import '../../domain/strength.dart';
 import '../../providers.dart';
 import '../common.dart';
+import '../recommendations/recommendations.dart';
 import '../reference/exercises_screen.dart';
 
 const defaultRestSec = 120;
@@ -44,6 +46,8 @@ class SessionScreen extends ConsumerWidget {
         await journal.skipSet(s.id);
       }
       await journal.finishSession(sessionId);
+      // Движок правил — после пересчёта аналитики.
+      await ref.read(rulesRepoProvider).onSessionCompleted(sessionId);
       ref.read(restTimerProvider.notifier).stop();
       if (!context.mounted) return;
       final done = await journal.session(sessionId);
@@ -108,6 +112,9 @@ class SessionScreen extends ConsumerWidget {
                   children: [
                     if (session.note != null)
                       Padding(padding: const EdgeInsets.all(8), child: Text('Заметка: ${session.note}')),
+                    for (final r in ref.watch(newRecommendationsProvider).value ?? const <RecommendationView>[])
+                      if (list.any((e) => e.plan?.programDayExerciseId == r.rec.programDayExerciseId))
+                        RecommendationCard(r),
                     for (final e in list) _ExerciseCard(view: e, step: step, timerEnabled: inProgress),
                   ],
                 );

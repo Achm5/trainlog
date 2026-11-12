@@ -6,7 +6,9 @@ import '../../data/analytics_repo.dart';
 import '../../domain/dates.dart';
 import '../../domain/planning.dart';
 import '../../providers.dart';
+import '../../data/database.dart';
 import '../common.dart';
+import 'analytics_charts.dart';
 
 enum AnalyticsPeriod {
   cycle('Мезоцикл'),
@@ -34,6 +36,9 @@ class AnalyticsRange {
 final _statsProvider = StreamProvider.family<List<ExerciseStatView>, AnalyticsRange>(
     (ref, r) => ref.watch(analyticsRepoProvider).watchExerciseStats(fromYmd: r.from, toYmd: r.to));
 
+final _volumeProvider = StreamProvider.family<List<WeeklyMuscleVolumeRow>, AnalyticsRange>(
+    (ref, r) => ref.watch(analyticsRepoProvider).watchMuscleVolume(fromYmd: r.from, toYmd: r.to));
+
 const chartPalette = [
   Color(0xFF1F7A6B),
   Color(0xFFD9822B),
@@ -54,6 +59,8 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   AnalyticsPeriod _period = AnalyticsPeriod.cycle;
   Set<int>? _selected;
+  int? _dipsExerciseId;
+  int? _muscleId;
 
   AnalyticsRange _range() {
     final now = today();
@@ -164,6 +171,61 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         trailing: Text('${formatKg(last.bestE1rmKg)} кг', style: Theme.of(context).textTheme.titleMedium),
                       );
                     }),
+                  const Divider(height: 32),
+                  Text('Просадки', style: Theme.of(context).textTheme.titleMedium),
+                  const Text('Изменение 1ПМ к прошлой неделе, %. Падение — красным, рост — зелёным.'),
+                  Builder(builder: (context) {
+                    final dipId = ids.contains(_dipsExerciseId) ? _dipsExerciseId! : ids.first;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButton<int>(
+                          isExpanded: true,
+                          value: dipId,
+                          items: [for (final id in ids) DropdownMenuItem(value: id, child: Text(names[id]!))],
+                          onChanged: (v) => setState(() => _dipsExerciseId = v),
+                        ),
+                        SizedBox(
+                          height: 200,
+                          child: DipsChart(rows: withE1rm.where((r) => r.exercise.id == dipId).toList()),
+                        ),
+                      ],
+                    );
+                  }),
+                  const Divider(height: 32),
+                  Text('Объём по группам мышц', style: Theme.of(context).textTheme.titleMedium),
+                  const Text('Рабочие подходы в неделю с учётом долей. Пунктир — целевой коридор.'),
+                  Builder(builder: (context) {
+                    final groups = ref.watch(muscleGroupsProvider).value ?? const <MuscleGroup>[];
+                    final volume = ref.watch(_volumeProvider(_range())).value ?? const <WeeklyMuscleVolumeRow>[];
+                    if (groups.isEmpty) return const SizedBox.shrink();
+                    final group = groups.firstWhere((g) => g.id == _muscleId, orElse: () => groups.first);
+                    final weeks = continuousWeeks(rows.map((r) => r.stat.weekStart));
+                    final own = volume.where((v) => v.muscleGroupId == group.id).toList();
+                    final last = own.isEmpty ? null : own.last;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButton<int>(
+                          isExpanded: true,
+                          value: group.id,
+                          items: [for (final g in groups) DropdownMenuItem(value: g.id, child: Text(g.name))],
+                          onChanged: (v) => setState(() => _muscleId = v),
+                        ),
+                        SizedBox(height: 200, child: VolumeChart(rows: own, group: group, allWeeks: weeks)),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text('Цель: ${group.targetSetsMin}–${group.targetSetsMax} подходов. '
+                              '${last == null ? 'Данных за период нет.' : 'Последняя неделя: ${formatKg(last.sets)} подх., тоннаж ${last.tonnageKg.round()} кг.'}'),
+                        ),
+                      ],
+                    );
+                  }),
+                  const Divider(height: 32),
+                  Text('Выполнение плана', style: Theme.of(context).textTheme.titleMedium),
+                  const Text('Доля подходов по статусам за неделю, %: зелёные / жёлтые / красные.'),
+                  const SizedBox(height: 8),
+                  SizedBox(height: 180, child: AdherenceChart(rows: rows)),
                 ],
               );
             },

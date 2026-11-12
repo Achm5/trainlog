@@ -8,6 +8,7 @@ import 'features/planner/exercise_plan_screen.dart';
 import 'features/planner/program_form_screen.dart';
 import 'features/planner/program_screen.dart';
 import 'features/planner/programs_screen.dart';
+import 'features/recommendations/recommendations.dart';
 import 'features/reference/exercise_edit_screen.dart';
 import 'features/reference/exercises_screen.dart';
 import 'features/reference/muscle_groups_screen.dart';
@@ -28,6 +29,8 @@ final appRouter = GoRouter(
     GoRoute(path: '/exercise/:id', builder: (c, s) => ExerciseEditScreen(exerciseId: _id(s))),
     GoRoute(path: '/muscles', builder: (c, s) => const MuscleGroupsScreen()),
     GoRoute(path: '/settings', builder: (c, s) => const SettingsScreen()),
+    GoRoute(path: '/recommendations', builder: (c, s) => const RecommendationsScreen()),
+    GoRoute(path: '/rules', builder: (c, s) => const RulesScreen()),
   ],
 );
 
@@ -107,6 +110,18 @@ class MoreScreen extends StatelessWidget {
           title: const Text('Группы мышц'),
           subtitle: const Text('Целевые коридоры подходов в неделю'),
           onTap: () => context.push('/muscles'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.lightbulb_outline),
+          title: const Text('Рекомендации'),
+          subtitle: const Text('История решений и откат изменений плана'),
+          onTap: () => context.push('/recommendations'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.rule),
+          title: const Text('Правила'),
+          subtitle: const Text('Пороги, приоритеты и паузы движка рекомендаций'),
+          onTap: () => context.push('/rules'),
         ),
         ListTile(
           leading: const Icon(Icons.settings),
