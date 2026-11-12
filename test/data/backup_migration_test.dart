@@ -131,7 +131,8 @@ void main() {
     await fill(db);
     final journal = await BackupService(db).journalCsv();
     final lines = journal.trim().split('\n');
-    expect(lines.first, startsWith('﻿Дата;Сессия;Упражнение;Подход'));
+    expect(journal.codeUnitAt(0), 0xFEFF); // BOM для Excel
+    expect(lines.first, startsWith('Дата;Сессия;Упражнение;Подход'));
     expect(lines.length, 1 + 3); // три плановых подхода
     expect(lines[1], contains('2026-11-02'));
     expect(lines[1], contains(';60;8;60;8;2;done;нет;'));
