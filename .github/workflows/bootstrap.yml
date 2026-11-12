@@ -1,0 +1,44 @@
+# Одноразовый workflow: создаёт каркас Flutter-проекта и фиксирует версии зависимостей.
+# Удаляется после первого успешного запуска.
+name: bootstrap
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/bootstrap.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Create project
+        run: |
+          flutter --version
+          if [ ! -f pubspec.yaml ]; then
+            flutter create --org ru.personal --project-name trainlog --platforms android --description "Тренировки, прогрессия и питание" .
+          fi
+      - name: Add dependencies
+        run: |
+          flutter pub add flutter_localizations --sdk=flutter
+          flutter pub add drift drift_flutter sqlite3 path path_provider \
+            flutter_riverpod go_router fl_chart mobile_scanner http wakelock_plus \
+            flutter_local_notifications local_auth share_plus file_picker \
+            intl crypto collection
+          flutter pub add --dev drift_dev build_runner
+          flutter pub get
+          flutter --version > .flutter-version.txt
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Каркас Flutter-проекта и зависимости (bootstrap)"
+          git push
