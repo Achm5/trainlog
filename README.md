@@ -59,7 +59,8 @@ flutter pub get
 dart run build_runner build      # генерирует lib/data/database.g.dart (Drift)
 flutter analyze
 flutter test
-flutter build apk --release      # → build/app/outputs/flutter-apk/app-release.apk
+flutter build apk --release      # → build/app/outputs/flutter-apk/app-release.apk (универсальный)
+flutter build apk --release --split-per-abi   # отдельные APK по архитектурам, как в CI
 ```
 
 Для подписи своим ключом создайте `android/key.properties`:
@@ -73,7 +74,7 @@ keyPassword=...
 
 ## Установка APK на телефон
 
-1. Скачайте `app-release.apk` на телефон (из Releases или артефактов).
+1. Скачайте `trainlog-arm64.apk` на телефон (из Releases или артефактов). `trainlog-arm32.apk` нужен только старым 32-битным устройствам.
 2. Откройте файл. Android попросит разрешить установку из этого источника
    («Установка неизвестных приложений») — разрешите для браузера или файлового менеджера.
 3. Обновление: установите новый APK поверх старого, данные сохранятся (при том же ключе подписи).

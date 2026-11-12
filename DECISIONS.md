@@ -5,7 +5,8 @@
 - **Генерируемый код Drift** (`*.g.dart`) в репозиторий не кладётся, генерируется `build_runner` в CI и локально.
 - **`flutter analyze --no-fatal-infos`.** Ошибки и предупреждения валят сборку, информационные замечания — нет (в `tables.dart` Drift требует самоссылающихся геттеров для CHECK).
 - **Подпись.** Без `android/key.properties` release-сборка подписывается debug-ключом, чтобы CI работал до настройки секретов; GitHub Release создаётся только при наличии ключа.
-- **versionCode** = номер запуска workflow (`--build-number`).
+- **versionCode** = номер запуска workflow (`--build-number`); при сборке по архитектурам Flutter добавляет к нему 1000 × код ABI.
+- **APK по архитектурам.** CI собирает `--split-per-abi` и публикует `trainlog-arm64.apk` и `trainlog-arm32.apk`: универсальный APK весил больше 80 МБ. Для каждого файла в лог пишутся размер, SHA-256 и результат `apksigner verify`.
 - **Логи CI** дублируются в ветку `ci-logs`.
 - **compileSdk = 37**: этого требуют `flutter_local_notifications` 23 и `androidx.core` 1.19; `targetSdk` — по умолчанию Flutter.
 
