@@ -13,7 +13,7 @@ int ageOn(DateTime birthDate, DateTime on) {
   return age;
 }
 
-const activityLevels = <double, String>{
+final activityLevels = <double, String>{
   1.2: 'Сидячий образ жизни',
   1.375: '1–3 тренировки в неделю',
   1.55: '3–5 тренировок',

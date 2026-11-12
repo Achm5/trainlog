@@ -90,7 +90,10 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
     try {
       final r = await ref.read(offClientProvider).byBarcode(code);
       if (!mounted) return;
-      if (r.product != null) return _addOff(r.product!);
+      if (r.product != null) {
+        await _addOff(r.product!);
+        return;
+      }
       toast(context, r.found
           ? 'В карточке Open Food Facts нет калорий — заполните продукт вручную'
           : 'Штрихкод $code не найден — добавьте продукт вручную');
