@@ -61,12 +61,20 @@ class NutritionRepo {
 
   // ---------- Продукты ----------
 
+  /// Продукты: избранные первыми. Поиск без учёта регистра выполняется в Dart,
+  /// потому что LIKE в SQLite не сворачивает регистр кириллицы.
   Stream<List<Product>> watchProducts({String query = ''}) {
     final q = db.select(db.products)
-      ..orderBy([(p) => OrderingTerm.desc(p.isFavorite), (p) => OrderingTerm.asc(p.name)])
-      ..limit(200);
-    if (query.trim().isNotEmpty) q.where((p) => p.name.like('%${query.trim()}%') | p.brand.like('%${query.trim()}%'));
-    return q.watch();
+      ..orderBy([(p) => OrderingTerm.desc(p.isFavorite), (p) => OrderingTerm.asc(p.name)]);
+    final needle = query.trim().toLowerCase();
+    return q.watch().map((all) => [
+          for (final p in all)
+            if (needle.isEmpty ||
+                p.name.toLowerCase().contains(needle) ||
+                (p.brand ?? '').toLowerCase().contains(needle) ||
+                p.barcode == needle)
+              p,
+        ].take(200).toList());
   }
 
   /// Недавние продукты — по последним записям дневника.

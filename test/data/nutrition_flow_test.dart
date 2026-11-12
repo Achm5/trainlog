@@ -38,10 +38,10 @@ void main() {
 
   test('формульная норма: без профиля не считается, с профилем сохраняется в nutrition_targets', () async {
     final day = DateTime.utc(2026, 11, 12);
-    expect(await repo.recalcFormulaTarget(on: day), isFalse);
-    await profile(goal: 'gain', pct: 10);
-    expect(await repo.recalcFormulaTarget(on: day), isFalse); // нет веса
     await repo.setWeight(day, 80);
+    expect(await repo.recalcFormulaTarget(on: day), isFalse); // профиль не заполнен
+    expect(await db.select(db.nutritionTargets).get(), isEmpty);
+    await profile(goal: 'gain', pct: 10);
     expect(await repo.recalcFormulaTarget(on: day), isTrue);
     final t = (await repo.currentTarget(day))!;
     expect(t.validFrom, '2026-11-12');
