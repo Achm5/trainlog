@@ -8,6 +8,7 @@ import '../../domain/nutrition.dart';
 import '../../domain/planning.dart';
 import '../../providers.dart';
 import '../common.dart';
+import '../ruler_picker.dart';
 import 'product_picker.dart';
 
 String g0(double v) => v.round().toString();
@@ -88,7 +89,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(g0(kcal), style: t.headlineMedium),
+                            AnimatedNumber(kcal, style: t.headlineMedium),
                             Text(' / ${g0(target.kcalTarget)} ккал', style: t.titleMedium),
                             const Spacer(),
                             Text(
@@ -100,7 +101,12 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        LinearProgressIndicator(value: (kcal / target.kcalTarget).clamp(0, 1).toDouble(), minHeight: 8),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(end: (kcal / target.kcalTarget).clamp(0, 1).toDouble()),
+                          duration: const Duration(milliseconds: 450),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, v, _) => LinearProgressIndicator(value: v, minHeight: 8),
+                        ),
                         const SizedBox(height: 10),
                         Row(
                           children: [
@@ -160,7 +166,12 @@ class _Macro extends StatelessWidget {
           Text('${g0(value)} / ${g0(target)} г', style: Theme.of(context).textTheme.titleSmall),
           Padding(
             padding: const EdgeInsets.only(right: 12, top: 2),
-            child: LinearProgressIndicator(value: target <= 0 ? 0 : (value / target).clamp(0, 1).toDouble()),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: target <= 0 ? 0 : (value / target).clamp(0, 1).toDouble()),
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
+              builder: (context, v, _) => LinearProgressIndicator(value: v),
+            ),
           ),
         ],
       ),

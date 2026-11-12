@@ -56,9 +56,13 @@ class RestTimer extends Notifier<DateTime?> {
 
   bool _permissionAsked = false;
 
+  /// Полная длительность текущего отсчёта — для кольца прогресса.
+  int totalSec = 0;
+
   void start(int seconds) {
     final notifications = NotificationService.instance;
     if (seconds <= 0) return stop();
+    totalSec = seconds;
     final end = DateTime.now().add(Duration(seconds: seconds));
     state = end;
     () async {

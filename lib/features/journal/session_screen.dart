@@ -15,6 +15,7 @@ import '../../providers.dart';
 import '../common.dart';
 import '../recommendations/recommendations.dart';
 import '../reference/exercises_screen.dart';
+import '../ruler_picker.dart';
 
 const defaultRestSec = 120;
 
@@ -233,6 +234,7 @@ class _ExerciseCard extends ConsumerWidget {
                 label: s.isWarmup ? 'Р' : '${++workNo}',
                 targetRir: plan?.targetRir,
                 onPlanned: () async {
+                  HapticFeedback.mediumImpact();
                   await journal.completeAsPlanned(s.id, targetRir: plan?.targetRir);
                   startRest();
                 },
@@ -307,8 +309,10 @@ class _SetRow extends StatelessWidget {
               width: 32,
               child: Text(label, textAlign: TextAlign.center, style: t.titleMedium),
             ),
-            Container(
-              width: 6,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+              width: done ? 8 : 6,
               height: 40,
               margin: const EdgeInsets.only(right: 10),
               decoration: BoxDecoration(
@@ -320,7 +324,19 @@ class _SetRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(main, style: done ? t.titleMedium : t.titleMedium?.copyWith(color: Theme.of(context).hintColor)),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    layoutBuilder: (current, previous) =>
+                        Stack(alignment: Alignment.centerLeft, children: [...previous, if (current != null) current]),
+                    transitionBuilder: (child, a) => FadeTransition(
+                      opacity: a,
+                      child: SlideTransition(
+                          position: Tween(begin: const Offset(0, 0.4), end: Offset.zero).animate(a), child: child),
+                    ),
+                    child: Text(main,
+                        key: ValueKey(main),
+                        style: done ? t.titleMedium : t.titleMedium?.copyWith(color: Theme.of(context).hintColor)),
+                  ),
                   if (done && (status != null || set.weightReduced || set.note != null || set.isWarmup))
                     Text(
                       [
@@ -426,7 +442,15 @@ class _SetEditorState extends ConsumerState<SetEditor> {
                 if (v != null && v >= 0) setState(() => _weight = v);
               },
             ),
-            const SizedBox(height: 12),
+            RulerPicker(
+              value: _weight,
+              step: widget.step,
+              max: 500,
+              majorEvery: 4,
+              label: formatKg,
+              onChanged: (v) => setState(() => _weight = v),
+            ),
+            const SizedBox(height: 8),
             _Stepper(
               label: 'Повторы',
               value: '$_reps',
@@ -437,7 +461,15 @@ class _SetEditorState extends ConsumerState<SetEditor> {
                 if (v != null && v >= 0) setState(() => _reps = v.round());
               },
             ),
-            const SizedBox(height: 12),
+            RulerPicker(
+              value: _reps.toDouble(),
+              step: 1,
+              max: 50,
+              majorEvery: 5,
+              label: (v) => v.round().toString(),
+              onChanged: (v) => setState(() => _reps = v.round()),
+            ),
+            const SizedBox(height: 8),
             if (!_warmup) ...[
               Align(alignment: Alignment.centerLeft, child: Text('RIR — повторов в запасе', style: Theme.of(context).textTheme.labelLarge)),
               const SizedBox(height: 4),
@@ -532,7 +564,11 @@ class _Stepper extends StatelessWidget {
             child: Column(
               children: [
                 Text(label, style: Theme.of(context).textTheme.labelMedium),
-                Text(value, style: Theme.of(context).textTheme.headlineMedium),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 120),
+                  transitionBuilder: (child, a) => ScaleTransition(scale: Tween(begin: 0.85, end: 1.0).animate(a), child: child),
+                  child: Text(value, key: ValueKey(value), style: Theme.of(context).textTheme.headlineMedium),
+                ),
               ],
             ),
           ),
@@ -582,13 +618,28 @@ class _RestTimerBarState extends ConsumerState<RestTimerBar> {
     }
     final scheme = Theme.of(context).colorScheme;
     final shown = over ? 0 : left;
+    final total = ref.read(restTimerProvider.notifier).totalSec;
     return Material(
       color: over ? scheme.tertiaryContainer : scheme.secondaryContainer,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         child: Row(
           children: [
-            Icon(over ? Icons.notifications_active : Icons.timer),
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: over
+                  ? const Icon(Icons.notifications_active)
+                  : TweenAnimationBuilder<double>(
+                      tween: Tween<double>(end: total <= 0 ? 0 : (left / total).clamp(0, 1).toDouble()),
+                      duration: const Duration(milliseconds: 500),
+                      builder: (context, v, _) => CircularProgressIndicator(
+                        value: v,
+                        strokeWidth: 4,
+                        backgroundColor: scheme.onSecondaryContainer.withValues(alpha: 0.15),
+                      ),
+                    ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
