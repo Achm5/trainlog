@@ -97,7 +97,9 @@ class BackupService {
 
   static String _cell(Object? v) {
     if (v == null) return '';
-    final s = v is double ? v.toString().replaceAll('.', ',') : v.toString();
+    final s = v is double
+        ? (v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString().replaceAll('.', ','))
+        : v.toString();
     return s.contains(RegExp('[;"\\n]')) ? '"${s.replaceAll('"', '""')}"' : s;
   }
 

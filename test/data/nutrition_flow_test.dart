@@ -131,6 +131,7 @@ void main() {
       expect(r.valid, isFalse);
       expect((await db.select(db.nutritionTargets).get()).length, 1);
       await db.delete(db.foodLogs).go();
+      await db.delete(db.bodyWeightLogs).go();
       await seed(foodDays: 21, weighIns: 7);
       expect((await repo.applyAdaptiveTdee(monday))!.valid, isFalse);
     });
