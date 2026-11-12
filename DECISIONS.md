@@ -7,6 +7,7 @@
 - **Подпись.** Без `android/key.properties` release-сборка подписывается debug-ключом, чтобы CI работал до настройки секретов; GitHub Release создаётся только при наличии ключа.
 - **versionCode** = номер запуска workflow (`--build-number`).
 - **Логи CI** дублируются в ветку `ci-logs`.
+- **compileSdk = 37**: этого требуют `flutter_local_notifications` 23 и `androidx.core` 1.19; `targetSdk` — по умолчанию Flutter.
 
 ## База данных
 - **Имена и типы** — по разделу 7 ТЗ. `created_at` / `updated_at` есть во всех таблицах; `updated_at` обновляет триггер SQLite.
