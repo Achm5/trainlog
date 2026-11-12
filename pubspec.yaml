@@ -55,6 +55,7 @@ dependencies:
   intl: ^0.20.3
   crypto: ^3.0.8
   collection: ^1.19.1
+  timezone: any
 
 dev_dependencies:
   flutter_test:

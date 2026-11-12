@@ -70,12 +70,33 @@ class PlannerRepo {
       (db.update(db.programs)..where((p) => p.id.equals(id))).write(data);
 
   /// Меняет неделю разгрузки и пересчитывает план.
+  /// Неделя, переставшая быть разгрузочной, получает подходы, повторы и RIR соседней рабочей недели.
   Future<void> setDeloadWeek(int programId, int? weekNo) async {
     await db.transaction(() async {
       final weeks = await weeksOf(programId);
+      final restored = [for (final w in weeks) if (w.isDeload && w.weekNo != weekNo) w.id];
       for (final w in weeks) {
         await (db.update(db.programWeeks)..where((x) => x.id.equals(w.id)))
             .write(ProgramWeeksCompanion(isDeload: Value(w.weekNo == weekNo)));
+      }
+      if (restored.isNotEmpty) {
+        for (final d in await daysOf(programId)) {
+          for (final e in await dayExercises(d.id)) {
+            final plans = await plansOf(e.id);
+            final template = plans.where((p) => !p.week.isDeload && !restored.contains(p.week.id)).firstOrNull?.plan;
+            if (template == null) continue;
+            for (final p in plans.where((p) => restored.contains(p.week.id) && !p.plan.isManual)) {
+              await (db.update(db.exerciseWeekPlans)..where((x) => x.id.equals(p.plan.id))).write(
+                ExerciseWeekPlansCompanion(
+                  sets: Value(template.sets),
+                  repsMin: Value(template.repsMin),
+                  repsMax: Value(template.repsMax),
+                  targetRir: Value(template.targetRir),
+                ),
+              );
+            }
+          }
+        }
       }
       await recalcProgram(programId);
     });

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../data/database.dart';
 import '../../data/journal_repo.dart';
@@ -84,6 +85,7 @@ class SessionScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          if (inProgress) const _KeepScreenOn(),
           const RestTimerBar(),
           Expanded(
             child: AsyncView(
@@ -128,6 +130,31 @@ class SessionScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Не даёт экрану гаснуть, пока открыта незавершённая тренировка.
+class _KeepScreenOn extends StatefulWidget {
+  const _KeepScreenOn();
+
+  @override
+  State<_KeepScreenOn> createState() => _KeepScreenOnState();
+}
+
+class _KeepScreenOnState extends State<_KeepScreenOn> {
+  @override
+  void initState() {
+    super.initState();
+    WakelockPlus.enable().catchError((_) {});
+  }
+
+  @override
+  void dispose() {
+    WakelockPlus.disable().catchError((_) {});
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _ExerciseCard extends ConsumerWidget {

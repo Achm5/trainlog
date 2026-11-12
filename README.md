@@ -1,17 +1,92 @@
-# trainlog
+# Тренировки — личное приложение для силовых тренировок и питания
 
-Тренировки, прогрессия и питание
+Автономное Android-приложение (Flutter): планировщик мезоцикла, журнал тренировок, аналитика,
+рекомендации и питание. Все данные хранятся на телефоне в SQLite, сервера и аккаунтов нет.
+Требования — в ТЗ «Тренировки, прогрессия и питание»; принятые решения — в [DECISIONS.md](DECISIONS.md).
 
-## Getting Started
+## Состояние по этапам ТЗ (раздел 8)
 
-This project is a starting point for a Flutter application.
+| Этап | Состав | Статус |
+|---|---|---|
+| 1. MVP | схема БД и сиды, справочники, Планировщик, Журнал со статусами, 1ПМ и график роста, подписанный APK и CI | готово |
+| 2. Прогрессия | объём по группам, график просадок, движок правил, закрытие недели | в работе |
+| 3. Питание | профиль, формульная норма, дневник, Open Food Facts, вес и тренд | не начат |
+| 4. Адаптивность | адаптивный TDEE, рецепты, резервные копии и импорт, PIN | не начат |
 
-A few resources to get you started if this is your first Flutter project:
+## Как получить APK без локального Android SDK
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Каждый push в ветку `main` запускает workflow `.github/workflows/build-apk.yml`:
+`flutter analyze` → `flutter test` → `flutter build apk --release`.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- APK лежит в артефактах запуска (вкладка **Actions** → запуск → **Artifacts**).
+- Если заданы секреты подписи, APK дополнительно публикуется в **Releases** (тег `build-N`).
+- Номер сборки (`versionCode`) равен номеру запуска workflow и растёт с каждой сборкой.
+- Логи каждого запуска дублируются в ветку `ci-logs`.
+
+### Секреты подписи
+
+В репозитории: **Settings → Secrets and variables → Actions → New repository secret**.
+
+| Секрет | Значение |
+|---|---|
+| `KEYSTORE_BASE64` | keystore в base64 одной строкой: `base64 -w0 trainlog-release.jks` |
+| `KEYSTORE_PASSWORD` | пароль хранилища |
+| `KEY_ALIAS` | алиас ключа (`trainlog`) |
+| `KEY_PASSWORD` | пароль ключа |
+
+Пока секретов нет, CI подписывает APK debug-ключом и пишет предупреждение: такая сборка
+ставится на телефон, но не обновит и не будет обновлена release-сборкой.
+
+## Ключ подписи
+
+Ключ создаётся один раз и хранится вне репозитория (`*.jks` и `android/key.properties` в `.gitignore`):
+
+```
+keytool -genkeypair -v -keystore trainlog-release.jks -storetype JKS -keyalg RSA -keysize 2048 \
+  -validity 10000 -alias trainlog
+```
+
+**Важно.** Android обновляет приложение поверх старого только если новый APK подписан тем же
+ключом. Потеряете keystore или пароль — новую версию придётся ставить с удалением старой, то есть
+с потерей данных (если нет резервной копии). Храните keystore и пароли в надёжном месте.
+
+## Локальная сборка
+
+Нужны Flutter (stable) и Android SDK.
+
+```
+flutter pub get
+dart run build_runner build      # генерирует lib/data/database.g.dart (Drift)
+flutter analyze
+flutter test
+flutter build apk --release      # → build/app/outputs/flutter-apk/app-release.apk
+```
+
+Для подписи своим ключом создайте `android/key.properties`:
+
+```
+storeFile=/абсолютный/путь/trainlog-release.jks
+storePassword=...
+keyAlias=trainlog
+keyPassword=...
+```
+
+## Установка APK на телефон
+
+1. Скачайте `app-release.apk` на телефон (из Releases или артефактов).
+2. Откройте файл. Android попросит разрешить установку из этого источника
+   («Установка неизвестных приложений») — разрешите для браузера или файлового менеджера.
+3. Обновление: установите новый APK поверх старого, данные сохранятся (при том же ключе подписи).
+
+Минимальная версия — Android 8.0 (API 26).
+
+## Структура проекта
+
+```
+lib/
+  data/        Drift: таблицы (22 шт., раздел 7 ТЗ), сиды, репозитории
+  domain/      чистые функции расчётов (без Flutter и БД)
+  features/    экраны: planner, journal, analytics, reference, settings
+  services/    уведомления
+test/          юнит-тесты расчётов и тесты БД
+```

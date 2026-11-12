@@ -5,6 +5,7 @@ import 'data/database.dart';
 import 'data/journal_repo.dart';
 import 'data/planner_repo.dart';
 import 'data/reference_repo.dart';
+import 'services/notifications.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => throw StateError('База открывается в main()'));
 
@@ -49,9 +50,26 @@ class RestTimer extends Notifier<DateTime?> {
   @override
   DateTime? build() => null;
 
-  void start(int seconds) => state = seconds > 0 ? DateTime.now().add(Duration(seconds: seconds)) : null;
+  bool _permissionAsked = false;
 
-  void stop() => state = null;
+  void start(int seconds) {
+    final notifications = NotificationService.instance;
+    if (seconds <= 0) return stop();
+    final end = DateTime.now().add(Duration(seconds: seconds));
+    state = end;
+    () async {
+      if (!_permissionAsked) {
+        _permissionAsked = true;
+        await notifications.requestPermission();
+      }
+      await notifications.scheduleRestEnd(end);
+    }();
+  }
+
+  void stop() {
+    state = null;
+    NotificationService.instance.cancelRest();
+  }
 }
 
 final restTimerProvider = NotifierProvider<RestTimer, DateTime?>(RestTimer.new);
