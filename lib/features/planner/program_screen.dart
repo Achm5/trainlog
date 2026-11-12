@@ -213,10 +213,10 @@ class _DayTab extends ConsumerWidget {
                   : ReorderableListView.builder(
                       padding: const EdgeInsets.only(bottom: 88),
                       itemCount: items.length,
-                      onReorder: (oldIndex, newIndex) {
+                      onReorderItem: (oldIndex, newIndex) {
                         final ids = [for (final v in items) v.item.id];
                         final moved = ids.removeAt(oldIndex);
-                        ids.insert(newIndex > oldIndex ? newIndex - 1 : newIndex, moved);
+                        ids.insert(newIndex, moved);
                         planner.reorder(day.id, ids);
                       },
                       itemBuilder: (c, i) {
