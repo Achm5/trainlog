@@ -9,6 +9,7 @@ import '../../providers.dart';
 import '../../services/off_client.dart';
 import '../common.dart';
 import 'product_edit.dart';
+import 'recipe_edit.dart';
 
 /// Выбор продукта для записи в дневник: избранное и недавние, свои продукты,
 /// поиск в Open Food Facts по названию и штрихкоду.
@@ -120,7 +121,8 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
         subtitle: Text('${p.kcal100g.round()} ккал · Б ${p.protein100g.round()} Ж ${p.fat100g.round()} У ${p.carbs100g.round()} на 100 г'),
         trailing: IconButton(
           icon: const Icon(Icons.info_outline),
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute<int>(builder: (_) => ProductEditScreen(productId: p.id))),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<int>(
+              builder: (_) => p.source == 'recipe' ? RecipeEditScreen(recipeId: p.id) : ProductEditScreen(productId: p.id))),
         ),
         onTap: () => _add(p),
       );
@@ -135,6 +137,16 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
         actions: [
           IconButton(tooltip: 'Сканировать штрихкод', icon: const Icon(Icons.qr_code_scanner), onPressed: _scan),
           IconButton(tooltip: 'Новый продукт вручную', icon: const Icon(Icons.add), onPressed: _createManual),
+          IconButton(
+            tooltip: 'Новый рецепт',
+            icon: const Icon(Icons.restaurant_menu),
+            onPressed: () async {
+              final id = await Navigator.of(context).push<int>(MaterialPageRoute(builder: (_) => const RecipeEditScreen()));
+              if (id == null || !mounted) return;
+              final recipe = await ref.read(nutritionRepoProvider).product(id);
+              if (recipe != null && mounted) await _add(recipe);
+            },
+          ),
         ],
       ),
       body: ListView(

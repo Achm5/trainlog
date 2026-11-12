@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'app.dart';
 import 'data/app_state.dart';
 import 'data/database.dart';
+import 'data/nutrition_repo.dart';
 import 'data/rules_repo.dart';
 import 'providers.dart';
 import 'services/notifications.dart';
@@ -21,7 +22,10 @@ Future<void> main() async {
 
   // Закрытие недели — при первом запуске на новой неделе; пропущенные недели по очереди.
   try {
-    await RulesRepo(db, state).closeWeeks();
+    final nutrition = NutritionRepo(db);
+    await RulesRepo(db, state).closeWeeks(extra: (week) async {
+      await nutrition.applyAdaptiveTdee(week);
+    });
   } catch (e) {
     debugPrint('Закрытие недели не выполнено: $e');
   }

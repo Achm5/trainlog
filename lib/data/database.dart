@@ -50,17 +50,19 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await createIndexesAndTriggers();
+          await createV2Indexes();
           await seedDatabase(this);
         },
         onUpgrade: (m, from, to) async {
-          // Версионные миграции: каждый шаг from → from + 1 добавляется сюда.
+          // Версионные миграции: каждый шаг from → from + 1.
+          if (from < 2) await createV2Indexes();
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -85,6 +87,19 @@ FOR EACH ROW WHEN NEW.updated_at = OLD.updated_at
 BEGIN
   UPDATE "$name" SET updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE rowid = NEW.rowid;
 END''');
+    }
+  }
+
+  /// Схема v2: индексы для выборок журнала и плана по внешним ключам.
+  static const v2Indexes = {
+    'ix_session_exercises_session': 'session_exercises(session_id)',
+    'ix_exercise_week_plans_week': 'exercise_week_plans(program_week_id)',
+    'ix_weekly_exercise_stats_week': 'weekly_exercise_stats(week_start)',
+  };
+
+  Future<void> createV2Indexes() async {
+    for (final e in v2Indexes.entries) {
+      await customStatement('CREATE INDEX IF NOT EXISTS ${e.key} ON ${e.value}');
     }
   }
 

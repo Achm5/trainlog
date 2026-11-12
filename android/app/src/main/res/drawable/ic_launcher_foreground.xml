@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Логотип Achm: буква «A», перекладина которой — гриф штанги с блинами. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M38,76 L54,34 L70,76"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+    <path
+        android:pathData="M31,62 L77,62"
+        android:strokeColor="#F2A541"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M30,53 L30,71 M78,53 L78,71"
+        android:strokeColor="#F2A541"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"/>
+</vector>

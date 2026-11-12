@@ -47,3 +47,6 @@ class FileAppState implements AppStateStore {
 }
 
 const stateLastClosedWeek = 'last_closed_week';
+const stateLastBackupAt = 'last_backup_at';
+const stateBackupReminderAt = 'backup_reminder_at';
+const stateBiometricEnabled = 'biometric_enabled';

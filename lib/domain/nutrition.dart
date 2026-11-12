@@ -187,3 +187,33 @@ OffProduct? parseOffProduct(Map<String, dynamic> p) {
     carbs100: _num(n['carbohydrates_100g']) ?? 0,
   );
 }
+
+class RecipeIngredient {
+  const RecipeIngredient({
+    required this.grams,
+    required this.kcal100,
+    required this.protein100,
+    required this.fat100,
+    required this.carbs100,
+  });
+  final double grams;
+  final double kcal100;
+  final double protein100;
+  final double fat100;
+  final double carbs100;
+}
+
+/// КБЖУ рецепта на 100 г: сумма по ингредиентам, делённая на общий вес.
+({double kcal, double protein, double fat, double carbs, double totalGrams}) recipePer100(Iterable<RecipeIngredient> items) {
+  var grams = 0.0, kcal = 0.0, protein = 0.0, fat = 0.0, carbs = 0.0;
+  for (final i in items) {
+    grams += i.grams;
+    kcal += i.kcal100 * i.grams / 100;
+    protein += i.protein100 * i.grams / 100;
+    fat += i.fat100 * i.grams / 100;
+    carbs += i.carbs100 * i.grams / 100;
+  }
+  if (grams <= 0) return (kcal: 0, protein: 0, fat: 0, carbs: 0, totalGrams: 0);
+  final k = 100 / grams;
+  return (kcal: kcal * k, protein: protein * k, fat: fat * k, carbs: carbs * k, totalGrams: grams);
+}

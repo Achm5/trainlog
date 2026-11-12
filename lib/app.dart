@@ -2,6 +2,8 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'features/analytics/analytics_screen.dart';
+import 'features/data/data_screen.dart';
+import 'features/data/lock_gate.dart';
 import 'features/journal/session_screen.dart';
 import 'features/journal/today_screen.dart';
 import 'features/nutrition/nutrition_screen.dart';
@@ -34,6 +36,7 @@ final appRouter = GoRouter(
     GoRoute(path: '/recommendations', builder: (c, s) => const RecommendationsScreen()),
     GoRoute(path: '/rules', builder: (c, s) => const RulesScreen()),
     GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
+    GoRoute(path: '/data', builder: (c, s) => const DataScreen()),
   ],
 );
 
@@ -49,7 +52,8 @@ class TrainLogApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Тренировки',
+      title: 'Achm',
+      builder: (context, child) => LockGate(child: child ?? const SizedBox.shrink()),
       routerConfig: appRouter,
       theme: _theme(Brightness.light),
       darkTheme: _theme(Brightness.dark),
@@ -132,6 +136,12 @@ class MoreScreen extends StatelessWidget {
           title: const Text('Правила'),
           subtitle: const Text('Пороги, приоритеты и паузы движка рекомендаций'),
           onTap: () => context.push('/rules'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.backup_outlined),
+          title: const Text('Данные и защита'),
+          subtitle: const Text('Резервная копия, импорт, CSV, PIN'),
+          onTap: () => context.push('/data'),
         ),
         ListTile(
           leading: const Icon(Icons.settings),

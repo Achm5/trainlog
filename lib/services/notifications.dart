@@ -13,7 +13,7 @@ class NotificationService {
   Future<void> init() async {
     try {
       await _plugin.initialize(
-        settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
+        settings: const InitializationSettings(android: AndroidInitializationSettings('ic_stat_achm')),
       );
       _ready = true;
     } catch (_) {

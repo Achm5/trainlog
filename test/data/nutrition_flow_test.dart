@@ -106,4 +106,75 @@ void main() {
     await repo.addFood(date: DateTime.utc(2026, 11, 12), meal: 'snack', product: (await repo.product(manual))!, grams: 150);
     expect((await repo.recentProducts()).map((x) => x.name).toList(), ['Яблоко', 'Гречка ядрица']);
   });
+
+  group('адаптивный TDEE при закрытии недели', () {
+    final monday = DateTime.utc(2026, 11, 2); // закрываемая неделя 02.11–08.11, окно 19.10–08.11
+    Future<void> seed({required int foodDays, required int weighIns, double kcal = 2500, double dailyDelta = 0}) async {
+      await profile();
+      final start = DateTime.utc(2026, 10, 19);
+      for (var i = 0; i < 21; i++) {
+        final d = start.add(Duration(days: i));
+        if (i < weighIns) await repo.setWeight(d, 80 + dailyDelta * i);
+      }
+      await db.delete(db.nutritionTargets).go();
+      await repo.recalcFormulaTarget(on: start); // BMR 1780 × 1,55 = 2759 (вес 80, тренд первого дня)
+      final id = await repo.saveManualProduct(name: 'Еда', kcal: 100, protein: 5, fat: 3, carbs: 12);
+      final p = (await repo.product(id))!;
+      for (var i = 0; i < foodDays; i++) {
+        await repo.addFood(date: start.add(Duration(days: i)), meal: 'lunch', product: p, grams: kcal);
+      }
+    }
+
+    test('невалидное окно оставляет прежнее значение', () async {
+      await seed(foodDays: 9, weighIns: 21);
+      final r = (await repo.applyAdaptiveTdee(monday))!;
+      expect(r.valid, isFalse);
+      expect((await db.select(db.nutritionTargets).get()).length, 1);
+      await db.delete(db.foodLogs).go();
+      await seed(foodDays: 21, weighIns: 7);
+      expect((await repo.applyAdaptiveTdee(monday))!.valid, isFalse);
+    });
+
+    test('валидное окно: новая норма с понедельника, изменение не больше 150 ккал', () async {
+      await seed(foodDays: 21, weighIns: 21, kcal: 2000); // ест 2000 при стабильном весе → расход ниже формульного
+      final old = (await repo.currentTarget(monday))!;
+      final r = (await repo.applyAdaptiveTdee(monday))!;
+      expect(r.valid, isTrue);
+      expect(r.observed, closeTo(2000, 1e-6));
+      expect(r.tdee, closeTo(old.tdee - 150, 1e-6)); // 0,7 × 2759 + 0,3 × 2000 = 2531,3 → ограничено −150
+      final t = (await repo.currentTarget(DateTime.utc(2026, 11, 9)))!;
+      expect(t.validFrom, '2026-11-09');
+      expect(t.tdeeSource, 'adaptive');
+      expect(t.tdee, closeTo(old.tdee - 150, 1e-6));
+      expect(t.kcalTarget, closeTo(old.tdee - 150, 1e-6)); // удержание, выше BMR
+      // Старая норма продолжает действовать на прошлые дни.
+      expect((await repo.currentTarget(DateTime.utc(2026, 11, 8)))!.tdeeSource, 'formula');
+      // Правка профиля сохраняет адаптивный расход.
+      await repo.recalcFormulaTarget(on: DateTime.utc(2026, 11, 10));
+      expect((await repo.currentTarget(DateTime.utc(2026, 11, 10)))!.tdeeSource, 'adaptive');
+    });
+
+    test('без нормы пересчёт не выполняется', () async {
+      expect(await repo.applyAdaptiveTdee(monday), isNull);
+    });
+  });
+
+  test('рецепт: КБЖУ на 100 г из ингредиентов, правка состава пересчитывает', () async {
+    final rice = await repo.saveManualProduct(name: 'Рис', kcal: 350, protein: 7, fat: 1, carbs: 78);
+    final chicken = await repo.saveManualProduct(name: 'Курица', kcal: 110, protein: 23, fat: 2, carbs: 0);
+    final id = await repo.saveRecipe(name: 'Плов', gramsByProductId: {rice: 100, chicken: 300});
+    var recipe = (await repo.product(id))!;
+    expect(recipe.source, 'recipe');
+    expect(recipe.kcal100g, closeTo((350 + 330) / 4, 1e-9));
+    expect(recipe.protein100g, closeTo((7 + 69) / 4, 1e-9));
+    expect((await repo.recipeItems(id)).length, 2);
+
+    await repo.saveRecipe(id: id, name: 'Плов', gramsByProductId: {rice: 200});
+    recipe = (await repo.product(id))!;
+    expect(recipe.kcal100g, closeTo(350, 1e-9));
+    expect((await repo.recipeItems(id)).single.product.name, 'Рис');
+    // Ингредиент рецепта удалить нельзя.
+    expect(await repo.deleteProduct(rice), isFalse);
+    expect(await repo.deleteProduct(chicken), isTrue);
+  });
 }

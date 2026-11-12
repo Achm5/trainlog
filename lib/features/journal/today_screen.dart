@@ -6,6 +6,7 @@ import '../../data/database.dart';
 import '../../domain/dates.dart';
 import '../../providers.dart';
 import '../common.dart';
+import '../data/data_screen.dart';
 import '../recommendations/recommendations.dart';
 
 /// Главный экран журнала: тренировка дня, незавершённая сессия, свободная тренировка, история.
@@ -39,6 +40,7 @@ class TodayScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
+          BackupReminderCard(onOpen: () => context.push('/data')),
           for (final r in newRecs) RecommendationCard(r),
           if (inProgress != null)
             Card(

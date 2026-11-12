@@ -300,6 +300,125 @@ class NutritionRepo {
     );
     return true;
   }
+
+  // ---------- Рецепты ----------
+
+  Future<List<RecipeItemView>> recipeItems(int recipeId) async {
+    final q = db.select(db.recipeItems).join([
+      innerJoin(db.products, db.products.id.equalsExp(db.recipeItems.productId)),
+    ])
+      ..where(db.recipeItems.recipeProductId.equals(recipeId));
+    return [for (final r in await q.get()) RecipeItemView(r.readTable(db.products), r.readTable(db.recipeItems).grams)];
+  }
+
+  /// Сохраняет рецепт как продукт с source = recipe; КБЖУ на 100 г считаются из ингредиентов.
+  Future<int> saveRecipe({int? id, required String name, required Map<int, double> gramsByProductId}) {
+    return db.transaction(() async {
+      final items = <RecipeIngredient>[];
+      for (final e in gramsByProductId.entries) {
+        final p = await product(e.key);
+        if (p == null) continue;
+        items.add(RecipeIngredient(
+            grams: e.value, kcal100: p.kcal100g, protein100: p.protein100g, fat100: p.fat100g, carbs100: p.carbs100g));
+      }
+      final r = recipePer100(items);
+      final data = ProductsCompanion(
+        source: const Value('recipe'),
+        name: Value(name),
+        kcal100g: Value(r.kcal),
+        protein100g: Value(r.protein),
+        fat100g: Value(r.fat),
+        carbs100g: Value(r.carbs),
+      );
+      final int recipeId;
+      if (id == null) {
+        recipeId = await db.into(db.products).insert(data);
+      } else {
+        recipeId = id;
+        await (db.update(db.products)..where((p) => p.id.equals(id))).write(data);
+        await (db.delete(db.recipeItems)..where((i) => i.recipeProductId.equals(id))).go();
+      }
+      for (final e in gramsByProductId.entries) {
+        if (e.key == recipeId) continue;
+        await db.into(db.recipeItems).insert(
+            RecipeItemsCompanion.insert(recipeProductId: recipeId, productId: e.key, grams: e.value));
+      }
+      return recipeId;
+    });
+  }
+
+  // ---------- Адаптивный расход ----------
+
+  /// Еженедельный пересчёт TDEE по тренду веса и рациону (раздел 6.2). Вызывается при закрытии недели.
+  /// Окно — [windowDays] дней до конца закрытой недели. При невалидном окне прежняя норма остаётся.
+  Future<AdaptiveTdee?> applyAdaptiveTdee(DateTime weekStartDay, {int windowDays = 21}) async {
+    final end = addDays(weekStartDay, 6);
+    final start = addDays(end, -(windowDays - 1));
+    final prev = await currentTarget(end);
+    if (prev == null) return null;
+    final s = await db.getSettings();
+
+    final foods = await (db.select(db.foodLogs)..where((f) => f.date.isBetweenValues(ymd(start), ymd(end)))).get();
+    final kcalByDay = <String, double>{};
+    for (final f in foods) {
+      kcalByDay[f.date] = (kcalByDay[f.date] ?? 0) + f.kcal;
+    }
+    final logs = await (db.select(db.bodyWeightLogs)
+          ..where((w) => w.date.isSmallerOrEqualValue(ymd(end)))
+          ..orderBy([(w) => OrderingTerm.asc(w.date)]))
+        .get();
+    final series = emaTrend({for (final l in logs) parseYmd(l.date): l.weightKg})
+        .where((p) => !p.date.isBefore(start) && !p.date.isAfter(end))
+        .toList();
+    final weighIns = series.where((p) => p.measured).length;
+    if (series.length < 2) {
+      return AdaptiveTdee(valid: false, tdee: prev.tdee, foodDays: kcalByDay.length, weighIns: weighIns);
+    }
+    final r = adaptiveTdee(
+      oldTdee: prev.tdee,
+      dailyKcal: kcalByDay.values.toList(),
+      weighIns: weighIns,
+      trendStartKg: series.first.trendKg,
+      trendEndKg: series.last.trendKg,
+      windowDays: daysBetween(series.first.date, series.last.date),
+      kcalPerKg: s.kcalPerKg,
+    );
+    if (!r.valid) return r;
+
+    final weight = series.last.trendKg;
+    final validFrom = addDays(weekStartDay, 7);
+    final bmr = s.heightCm != null && s.birthDate != null
+        ? bmrMifflin(sex: s.sex, weightKg: weight, heightCm: s.heightCm!, ageYears: ageOn(parseYmd(s.birthDate!), validFrom))
+        : prev.bmr;
+    final adjust = goalAdjust(s.goal, s.goalAdjustPct);
+    await saveTarget(
+      validFrom: validFrom,
+      bmr: bmr,
+      tdee: r.tdee,
+      source: 'adaptive',
+      macros: macroTargets(
+          bmr: bmr, tdee: r.tdee, adjust: adjust, weightKg: weight, proteinPerKg: s.proteinGPerKg, fatPerKgMin: s.fatGPerKgMin),
+      details: {
+        'window_start': ymd(series.first.date),
+        'window_end': ymd(series.last.date),
+        'food_days': r.foodDays,
+        'weigh_ins': r.weighIns,
+        'trend_start_kg': series.first.trendKg,
+        'trend_end_kg': series.last.trendKg,
+        'tdee_old': prev.tdee,
+        'tdee_observed': r.observed,
+        'kcal_per_kg': s.kcalPerKg,
+        'adjust': adjust,
+      },
+    );
+    return r;
+  }
+}
+
+class RecipeItemView {
+  RecipeItemView(this.product, this.grams);
+  final Product product;
+  final double grams;
 }
 
 class FoodEntry {
