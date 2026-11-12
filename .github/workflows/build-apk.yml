@@ -1,0 +1,86 @@
+name: build-apk
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Dependencies and code generation
+        run: |
+          mkdir -p ci-logs
+          flutter --version | tee ci-logs/version.log
+          flutter pub get 2>&1 | tee ci-logs/pub.log
+          dart run build_runner build --delete-conflicting-outputs 2>&1 | tee ci-logs/build_runner.log
+      - name: Analyze
+        run: flutter analyze 2>&1 | tee ci-logs/analyze.log
+      - name: Test
+        run: flutter test 2>&1 | tee ci-logs/test.log
+      - name: Signing key
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            {
+              echo "storeFile=$RUNNER_TEMP/release.jks"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > android/key.properties
+            echo "signed=release-key" | tee ci-logs/signing.log
+          else
+            echo "::warning::Секреты подписи не заданы — APK подписан debug-ключом и не подходит для обновления поверх release-сборки."
+            echo "signed=debug-key" | tee ci-logs/signing.log
+          fi
+      - name: Build APK
+        run: flutter build apk --release --build-number=${{ github.run_number }} 2>&1 | tee ci-logs/build.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trainlog-apk-${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+      - name: GitHub Release
+        if: env.KEYSTORE_BASE64 != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Сборка ${{ github.run_number }}
+          files: build/app/outputs/flutter-apk/app-release.apk
+      - name: Publish logs
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          cp -r ci-logs/. "$RUNNER_TEMP/logs/" || true
+          cd "$RUNNER_TEMP/logs"
+          echo "${{ github.sha }} run=${{ github.run_number }} status=${{ job.status }}" > STATUS
+          for f in *.log; do
+            if [ -f "$f" ]; then tail -c 150000 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; fi
+          done
+          git init -q -b ci-logs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "logs ${{ github.sha }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-logs
