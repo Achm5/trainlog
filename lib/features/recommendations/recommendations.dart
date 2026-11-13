@@ -24,6 +24,20 @@ String explainRecommendation(RecommendationView v) {
           'Предлагается снизить вес с ${formatKg((p['from_kg'] as num).toDouble())} до '
           '${formatKg((p['to_kg'] as num).toDouble())} кг (${_pct(f['pct'] as num)}, не менее 2,5 кг). '
           'Веса следующих недель сдвинутся на ${formatKg((p['delta_kg'] as num).toDouble())} кг.';
+    case 'increase_weight':
+      final why = f['reason'] == 'top_of_range'
+          ? 'сделан верх диапазона повторов во всех рабочих подходах'
+          : 'запас RIR не меньше ${f['rir_margin']} сверх целевого';
+      return 'Последние ${f['sessions']} сессии «${f['exercise']}» выполнены полностью: $why. '
+          'Предлагается прибавить вес с ${formatKg((p['from_kg'] as num).toDouble())} до '
+          '${formatKg((p['to_kg'] as num).toDouble())} кг (${_pct(f['pct'] as num)}, не менее 2,5 кг). '
+          'Веса следующих недель сдвинутся на +${formatKg((p['delta_kg'] as num).toDouble())} кг.';
+    case 'reduce_reps':
+      final misses = (f['latest_shortfalls'] as List? ?? const []).join(', ');
+      return 'Последние ${f['sessions']} сессии «${f['exercise']}» выполнены частично'
+          '${misses.isEmpty ? '' : ' (недобор повторов в последней: $misses)'}. '
+          'Предлагается оставить вес и снизить повторы: ${p['from_min']}–${p['from_max']} → '
+          '${p['to_min']}–${p['to_max']} во всех следующих неделях.';
     case 'choice':
       final series = (f['e1rm_kg'] as List? ?? const []).map((e) => formatKg((e as num).toDouble())).join(' → ');
       return 'Расчётный 1ПМ «${f['exercise']}» не вырос на ${f['min_growth_pct']}% за ${f['weeks']} нед. подряд '

@@ -8,6 +8,7 @@ import '../../domain/planning.dart';
 import '../../providers.dart';
 import '../../data/database.dart';
 import 'analytics_charts.dart';
+import '../report/report_actions.dart';
 
 enum AnalyticsPeriod {
   cycle('Мезоцикл'),
@@ -401,7 +402,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return DefaultTabController(
       length: 4,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Аналитика')),
+        appBar: AppBar(
+          title: const Text('Аналитика'),
+          actions: [
+            if (ref.watch(activeProgramProvider).value case final p?)
+              IconButton(
+                tooltip: 'PDF-отчёт за мезоцикл',
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                onPressed: () => exportMesocycleReport(context, ref, p.id),
+              ),
+          ],
+        ),
         body: Column(
           children: [
             SingleChildScrollView(

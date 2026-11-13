@@ -9,6 +9,7 @@ import '../../domain/planning.dart';
 import '../../providers.dart';
 import '../common.dart';
 import '../reference/exercises_screen.dart';
+import '../report/report_actions.dart';
 import 'programs_screen.dart' show programStatusLabels;
 
 /// Экран программы: дни, упражнения с перетаскиванием, контроль лимита времени.
@@ -67,6 +68,8 @@ class _ProgramScreenState extends ConsumerState<ProgramScreen> {
                       toast(context, 'Копия создана, старт ${ruDate(start)}. Веса можно поправить в упражнениях.');
                       context.pushReplacement('/program/$newId');
                     }
+                  case 'report':
+                    await exportMesocycleReport(context, ref, id);
                   case 'archive':
                     await planner.archive(id);
                   case 'delete':
@@ -80,6 +83,7 @@ class _ProgramScreenState extends ConsumerState<ProgramScreen> {
               itemBuilder: (c) => [
                 if (program.status != 'active') const PopupMenuItem(value: 'activate', child: Text('Сделать активной')),
                 if (program.status != 'archived') const PopupMenuItem(value: 'archive', child: Text('В архив')),
+                const PopupMenuItem(value: 'report', child: Text('PDF-отчёт для тренера')),
                 const PopupMenuItem(value: 'copy', child: Text('Создать копию')),
                 const PopupMenuItem(value: 'delete', child: Text('Удалить')),
               ],

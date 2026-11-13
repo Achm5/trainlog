@@ -85,15 +85,20 @@ class RulesRepo {
         final sessions = <SessionOutcome>[];
         for (final r in await sq.get()) {
           final se = r.readTable(db.sessionExercises);
+          final plan = r.readTable(db.exerciseWeekPlans);
           final sets = await (db.select(db.setLogs)
                 ..where((s) => s.sessionExerciseId.equals(se.id) & s.isWarmup.equals(false)))
               .get();
+          final work = [for (final s in sets) if (s.status != 'skipped' && s.reps != null) s];
+          final rirs = [for (final s in work) if (s.rir != null) s.rir! - plan.targetRir];
           sessions.add(SessionOutcome(
             status: se.status,
             shortfalls: [
               for (final s in sets)
                 if (s.plannedReps != null && s.reps != null) shortfall(s.plannedReps!, s.reps!),
             ],
+            topOfRange: work.isNotEmpty && work.every((s) => s.reps! >= plan.repsMax),
+            rirMargin: rirs.isEmpty || rirs.length < work.length ? null : rirs.reduce((a, b) => a < b ? a : b),
           ));
         }
 
@@ -103,13 +108,16 @@ class RulesRepo {
         if (asOfYmd != null) statsQ.where((s) => s.weekStart.isSmallerOrEqualValue(asOfYmd));
         final stats = await statsQ.get();
 
+        final next = (await _upcomingPlans(item.id)).firstOrNull?.plan;
         out.add(ExerciseFacts(
           pdeId: item.id,
           exerciseName: ex.name,
           isCompound: ex.kind == 'compound',
           lastSessions: sessions,
           weeklyE1rm: [for (final s in stats) s.bestE1rmKg!],
-          currentWeightKg: (await _upcomingPlans(item.id)).firstOrNull?.plan.weightKg,
+          currentWeightKg: next?.weightKg,
+          currentRepsMin: next?.repsMin,
+          currentRepsMax: next?.repsMax,
         ));
       }
     }
@@ -298,8 +306,9 @@ class RulesRepo {
     await db.transaction(() async {
       final Map<String, dynamic> previous;
       switch (type) {
-        case 'reduce_weight':
-          final delta = (proposal['delta_kg'] as num).toDouble();
+        case 'reduce_weight' || 'increase_weight':
+          final sign = type == 'increase_weight' ? -1 : 1;
+          final delta = sign * (proposal['delta_kg'] as num).toDouble();
           final plans = await _upcomingPlans(rec.programDayExerciseId!);
           previous = {
             'type': type,
@@ -314,6 +323,23 @@ class RulesRepo {
             await (db.update(db.exerciseWeekPlans)..where((x) => x.id.equals(p.plan.id))).write(
                 ExerciseWeekPlansCompanion(weightKg: Value(w - delta < 0 ? 0 : w - delta), isManual: const Value(true)));
           }
+        case 'reduce_reps':
+          final cut = (proposal['from_min'] as num).toInt() - (proposal['to_min'] as num).toInt();
+          final cutMax = (proposal['from_max'] as num).toInt() - (proposal['to_max'] as num).toInt();
+          final plans = (await _upcomingPlans(rec.programDayExerciseId!)).where((p) => !p.week.isDeload).toList();
+          previous = {
+            'type': type,
+            'plans': [
+              for (final p in plans) {'id': p.plan.id, 'reps_min': p.plan.repsMin, 'reps_max': p.plan.repsMax},
+            ],
+          };
+          for (final p in plans) {
+            final min = p.plan.repsMin - cut < 1 ? 1 : p.plan.repsMin - cut;
+            final max = p.plan.repsMax - cutMax < min ? min : p.plan.repsMax - cutMax;
+            await (db.update(db.exerciseWeekPlans)..where((x) => x.id.equals(p.plan.id)))
+                .write(ExerciseWeekPlansCompanion(repsMin: Value(min), repsMax: Value(max)));
+          }
+          await _planner.recalcPlans(rec.programDayExerciseId!);
         case 'add_sets':
           final add = ((chosen?['sets'] ?? proposal['sets'] ?? 1) as num).toInt();
           final plans = (await _upcomingPlans(rec.programDayExerciseId!)).where((p) => !p.week.isDeload).toList();
@@ -362,12 +388,18 @@ class RulesRepo {
     final prev = jsonDecode(rec.previousValues!) as Map<String, dynamic>;
     await db.transaction(() async {
       switch (prev['type']) {
-        case 'reduce_weight':
+        case 'reduce_weight' || 'increase_weight':
           for (final p in (prev['plans'] as List).cast<Map<String, dynamic>>()) {
             await (db.update(db.exerciseWeekPlans)..where((x) => x.id.equals(p['id'] as int))).write(
                 ExerciseWeekPlansCompanion(
                     weightKg: Value((p['weight_kg'] as num?)?.toDouble()), isManual: Value(p['is_manual'] as bool)));
           }
+        case 'reduce_reps':
+          for (final p in (prev['plans'] as List).cast<Map<String, dynamic>>()) {
+            await (db.update(db.exerciseWeekPlans)..where((x) => x.id.equals(p['id'] as int))).write(
+                ExerciseWeekPlansCompanion(repsMin: Value(p['reps_min'] as int), repsMax: Value(p['reps_max'] as int)));
+          }
+          if (rec.programDayExerciseId != null) await _planner.recalcPlans(rec.programDayExerciseId!);
         case 'add_sets':
           for (final p in (prev['plans'] as List).cast<Map<String, dynamic>>()) {
             await (db.update(db.exerciseWeekPlans)..where((x) => x.id.equals(p['id'] as int)))

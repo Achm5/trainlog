@@ -50,3 +50,9 @@ const stateLastClosedWeek = 'last_closed_week';
 const stateLastBackupAt = 'last_backup_at';
 const stateBackupReminderAt = 'backup_reminder_at';
 const stateBiometricEnabled = 'biometric_enabled';
+
+/// Предупреждение о перетренированности: '0' — выключено (по умолчанию включено).
+const stateOvertrainingWarning = 'overtraining_warning';
+
+/// Неделя, предупреждение по которой скрыто пользователем.
+const stateOvertrainingDismissed = 'overtraining_dismissed_week';

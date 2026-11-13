@@ -51,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -69,6 +69,8 @@ class AppDatabase extends _$AppDatabase {
             if (exists.isEmpty) await m.createTable(waterLogs);
             await createIndexesAndTriggers();
           }
+          // v4: правила автопрогрессии (AUTO_PROGRESSION, REPS_CUT).
+          if (from < 4) await ensureSeedRules(this);
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');

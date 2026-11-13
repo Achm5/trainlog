@@ -31,6 +31,7 @@ Future<void> main() async {
   }
 
   final savedTabs = await state.get(stateNavTabs);
+  final overtrainingOn = await state.get(stateOvertrainingWarning) != '0';
 
   runApp(ProviderScope(
     overrides: [
@@ -38,6 +39,7 @@ Future<void> main() async {
       appStateProvider.overrideWithValue(state),
       if (savedTabs != null)
         initialNavTabsProvider.overrideWithValue(savedTabs.split(',').where((t) => t.isNotEmpty).toSet()),
+      initialOvertrainingProvider.overrideWithValue(overtrainingOn),
     ],
     child: const TrainLogApp(),
   ));

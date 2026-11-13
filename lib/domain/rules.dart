@@ -31,9 +31,15 @@ class RuleDef {
 
 /// Итог одной сессии упражнения: статус и недоборы рабочих подходов.
 class SessionOutcome {
-  const SessionOutcome({required this.status, required this.shortfalls});
+  const SessionOutcome({required this.status, required this.shortfalls, this.topOfRange = false, this.rirMargin});
   final String? status;
   final List<int> shortfalls;
+
+  /// Во всех рабочих подходах сделана верхняя граница диапазона повторов.
+  final bool topOfRange;
+
+  /// Минимальный по рабочим подходам запас RIR сверх целевого (null — RIR не записан).
+  final int? rirMargin;
 }
 
 /// Данные упражнения программы для проверки правил.
@@ -45,6 +51,8 @@ class ExerciseFacts {
     this.lastSessions = const [],
     this.weeklyE1rm = const [],
     this.currentWeightKg,
+    this.currentRepsMin,
+    this.currentRepsMax,
   });
   final int pdeId;
   final String exerciseName;
@@ -58,6 +66,10 @@ class ExerciseFacts {
 
   /// Плановый вес следующей сессии.
   final double? currentWeightKg;
+
+  /// Плановый диапазон повторов следующей сессии.
+  final int? currentRepsMin;
+  final int? currentRepsMax;
 }
 
 /// Данные закрытой недели программы.
@@ -116,6 +128,12 @@ bool noGrowth(List<double> weeklyE1rm, {required int weeks, required double minG
   return best < base * (1 + minGrowthPct / 100);
 }
 
+/// Повышение веса в AUTO_PROGRESSION: w + max(minStep; round_step(w × p)).
+double increasedWeight({required double weight, required double pct, required double step, double minStepKg = 2.5}) {
+  final byPct = roundToStep(weight * pct, step);
+  return weight + (byPct > minStepKg ? byPct : minStepKg);
+}
+
 bool _blocked(RuleDef rule, int? pdeId, List<RecState> existing, DateTime now) {
   for (final r in existing) {
     if (r.pdeId != pdeId) continue;
@@ -157,7 +175,10 @@ List<Candidate> evaluateRules({
     } else {
       for (final e in exercises) {
         final Candidate? c = switch (type) {
-          'last_sessions_status' => _evalLastSessions(rule, e, weightStep),
+          'last_sessions_status' => rule.action['type'] == 'reduce_reps'
+              ? _evalRepsCut(rule, e)
+              : _evalLastSessions(rule, e, weightStep),
+          'progression' => _evalProgression(rule, e, weightStep),
           'e1rm_plateau' => _evalPlateau(rule, e),
           _ => null,
         };
@@ -214,6 +235,63 @@ Candidate? _evalLastSessions(RuleDef rule, ExerciseFacts e, double step) {
       'pct': pct,
     },
     proposal: {'type': 'reduce_weight', 'from_kg': w, 'to_kg': newW, 'delta_kg': w - newW},
+  );
+}
+
+/// AUTO_PROGRESSION: последние N сессий выполнены полностью и с запасом —
+/// верх диапазона повторов во всех рабочих подходах или RIR выше целевого на rir_margin.
+Candidate? _evalProgression(RuleDef rule, ExerciseFacts e, double step) {
+  final n = _n(rule.condition, 'sessions', 2).toInt();
+  final margin = _n(rule.condition, 'rir_margin', 1).toInt();
+  if (n < 1 || e.lastSessions.length < n) return null;
+  final recent = e.lastSessions.take(n).toList();
+  bool easy(SessionOutcome s) => s.status == 'done' && (s.topOfRange || (s.rirMargin != null && s.rirMargin! >= margin));
+  if (!recent.every(easy)) return null;
+  final w = e.currentWeightKg;
+  if (w == null || w <= 0) return null;
+  final pct = _n(rule.action, 'pct', 0.025).toDouble();
+  final newW = increasedWeight(weight: w, pct: pct, step: step, minStepKg: _n(rule.action, 'min_step_kg', 2.5).toDouble());
+  return Candidate(
+    rule: rule,
+    pdeId: e.pdeId,
+    facts: {
+      'exercise': e.exerciseName,
+      'sessions': n,
+      'reason': recent.every((s) => s.topOfRange) ? 'top_of_range' : 'rir',
+      'rir_margin': margin,
+      'weight_kg': w,
+      'pct': pct,
+    },
+    proposal: {'type': 'increase_weight', 'from_kg': w, 'to_kg': newW, 'delta_kg': newW - w},
+  );
+}
+
+/// REPS_CUT: N сессий подряд с заданным статусом (по умолчанию «частично») —
+/// диапазон повторов следующих недель сдвигается вниз, вес остаётся.
+Candidate? _evalRepsCut(RuleDef rule, ExerciseFacts e) {
+  final n = _n(rule.condition, 'sessions', 2).toInt();
+  final status = rule.condition['status'] ?? 'partial';
+  if (n < 1 || e.lastSessions.length < n) return null;
+  final recent = e.lastSessions.take(n).toList();
+  if (!recent.every((s) => s.status == status)) return null;
+  final min = e.currentRepsMin, max = e.currentRepsMax;
+  if (min == null || max == null) return null;
+  final cut = _n(rule.action, 'reps', 2).toInt();
+  final floor = _n(rule.action, 'min_reps', 1).toInt();
+  final newMin = min - cut < floor ? floor : min - cut;
+  final newMax = max - cut < newMin ? newMin : max - cut;
+  if (newMin == min && newMax == max) return null;
+  return Candidate(
+    rule: rule,
+    pdeId: e.pdeId,
+    facts: {
+      'exercise': e.exerciseName,
+      'sessions': n,
+      'status': status,
+      'latest_shortfalls': recent.first.shortfalls,
+      'weight_kg': e.currentWeightKg,
+    },
+    proposal: {'type': 'reduce_reps', 'from_min': min, 'from_max': max, 'to_min': newMin, 'to_max': newMax},
   );
 }
 

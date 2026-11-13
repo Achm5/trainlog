@@ -37,6 +37,16 @@ class SettingsScreen extends ConsumerWidget {
                 onChanged: (v) => ref.read(navTabsProvider.notifier).toggle(t.id, v),
               ),
             const Divider(),
+            const ListTile(title: Text('Предупреждения', style: TextStyle(fontWeight: FontWeight.bold))),
+            SwitchListTile(
+              secondary: const Icon(Icons.monitor_heart_outlined),
+              title: const Text('Предупреждать о перетренированности'),
+              subtitle: const Text('Карточка в «Журнале» после закрытия недели, если совпало два признака и больше: '
+                  'падение 1ПМ, много недоборов, скачок тоннажа, объём выше коридора, 6+ недель без разгрузки'),
+              value: ref.watch(overtrainingEnabledProvider),
+              onChanged: (v) => ref.read(overtrainingEnabledProvider.notifier).toggle(v),
+            ),
+            const Divider(),
             const ListTile(title: Text('Расчёты тренировок', style: TextStyle(fontWeight: FontWeight.bold))),
             ListTile(
               title: const Text('Шаг округления веса'),

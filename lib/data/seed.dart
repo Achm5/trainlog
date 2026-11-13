@@ -5,7 +5,7 @@ import 'package:drift/drift.dart';
 import 'database.dart';
 
 /// Сид-данные первого запуска: настройки, группы мышц, оборудование,
-/// упражнения с вариациями и долями групп мышц, три базовых правила (раздел 5.2).
+/// упражнения с вариациями и долями групп мышц, правила движка рекомендаций.
 
 const _muscles = <(String, int, int)>[
   ('Грудь', 10, 20),
@@ -102,7 +102,7 @@ const _exercises = <_Ex>[
   _Ex('Сгибания запястий со штангой', _i, 'Штанга', {'Предплечья': 1.0}),
 ];
 
-/// Три базовых правила из раздела 5.2. Пороги лежат в JSON и меняются без релиза.
+/// Базовые правила раздела 5.2 и автопрогрессия (схема v4). Пороги лежат в JSON и меняются без релиза.
 final seedRules = <RulesCompanion>[
   RulesCompanion.insert(
     code: 'TWO_RED_IN_ROW',
@@ -152,7 +152,35 @@ final seedRules = <RulesCompanion>[
     priority: const Value(80),
     cooldownDays: const Value(28),
   ),
+  RulesCompanion.insert(
+    code: 'REPS_CUT',
+    name: 'Снизить повторы',
+    trigger: 'session_completed',
+    scope: 'exercise',
+    condition: jsonEncode({'type': 'last_sessions_status', 'sessions': 2, 'status': 'partial'}),
+    action: jsonEncode({'type': 'reduce_reps', 'reps': 2, 'min_reps': 1}),
+    priority: const Value(90),
+    cooldownDays: const Value(14),
+  ),
+  RulesCompanion.insert(
+    code: 'AUTO_PROGRESSION',
+    name: 'Автопрогрессия: прибавить вес',
+    trigger: 'session_completed',
+    scope: 'exercise',
+    condition: jsonEncode({'type': 'progression', 'sessions': 2, 'rir_margin': 1}),
+    action: jsonEncode({'type': 'increase_weight', 'pct': 0.025, 'min_step_kg': 2.5}),
+    priority: const Value(60),
+    cooldownDays: const Value(14),
+  ),
 ];
+
+/// Добавляет правила из [seedRules], которых нет в базе (по коду). Пользовательские правки не трогает.
+Future<void> ensureSeedRules(AppDatabase db) async {
+  final have = {for (final r in await db.select(db.rules).get()) r.code};
+  for (final r in seedRules) {
+    if (!have.contains(r.code.value)) await db.into(db.rules).insert(r);
+  }
+}
 
 Future<void> seedDatabase(AppDatabase db) async {
   await db.into(db.settings).insert(

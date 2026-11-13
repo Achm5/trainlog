@@ -32,7 +32,7 @@ void main() {
   tearDown(() => db.close());
 
   /// Проводит сессию недели [weekNo]: все подходы с указанными повторами.
-  Future<void> session(int weekNo, int reps, {DateTime? now}) async {
+  Future<void> session(int weekNo, int reps, {DateTime? now, int rir = 0}) async {
     final week = (await planner.weeksOf(programId))[weekNo - 1];
     final sid = await journal.startPlannedSession(dayId: dayId, weekId: week.id, date: DateTime.parse('${week.startDate}T00:00:00Z'));
     final sets = await (db.select(db.setLogs).join([
@@ -40,7 +40,7 @@ void main() {
     ])..where(db.sessionExercises.sessionId.equals(sid))).get();
     for (final r in sets) {
       final s = r.readTable(db.setLogs);
-      await journal.saveSet(s.id, weightKg: s.plannedWeightKg, reps: reps, rir: 0);
+      await journal.saveSet(s.id, weightKg: s.plannedWeightKg, reps: reps, rir: rir);
     }
     await journal.finishSession(sid);
     await rules.onSessionCompleted(sid, now: now);
@@ -156,5 +156,46 @@ void main() {
     expect((await planner.pde(pdeId)).exerciseId, variationId);
     await rules.rollback(rec2.id);
     expect((await planner.pde(pdeId)).exerciseId, before);
+  });
+
+  Future<String> codeOf(Recommendation r) async =>
+      (await (db.select(db.rules)..where((x) => x.id.equals(r.ruleId))).getSingle()).code;
+
+  test('AUTO_PROGRESSION: верх диапазона две сессии → +2,5 кг, откат', () async {
+    await session(1, 10);
+    expect(await recs(), isEmpty);
+    await session(2, 10);
+    final rec = (await recs()).single;
+    expect(await codeOf(rec), 'AUTO_PROGRESSION');
+    await rules.accept(rec.id);
+    var plans = await planner.plansOf(pdeId);
+    expect(plans.map((p) => p.plan.weightKg).toList(), [100, 100, 102.5, 102.5, 102.5, 92.5]);
+    await rules.rollback(rec.id);
+    plans = await planner.plansOf(pdeId);
+    expect(plans.map((p) => p.plan.weightKg).toList(), [100, 100, 100, 100, 100, 90]);
+    expect(plans.every((p) => !p.plan.isManual), isTrue);
+  });
+
+  test('AUTO_PROGRESSION по запасу RIR; обычное выполнение не срабатывает', () async {
+    await session(1, 8, rir: 2); // целевой RIR 2 — запаса нет
+    await session(2, 8, rir: 2);
+    expect(await recs(), isEmpty);
+    await session(3, 8, rir: 3);
+    await session(4, 8, rir: 4);
+    expect(await codeOf((await recs()).single), 'AUTO_PROGRESSION');
+  });
+
+  test('REPS_CUT: две частичные сессии → повторы 6–8, откат', () async {
+    await session(1, 5);
+    await session(2, 4);
+    final rec = (await recs()).single;
+    expect(await codeOf(rec), 'REPS_CUT');
+    await rules.accept(rec.id);
+    var plans = await planner.plansOf(pdeId);
+    expect(plans.map((p) => '${p.plan.repsMin}-${p.plan.repsMax}').toList(), ['8-10', '8-10', '6-8', '6-8', '6-8', '6-8']);
+    expect(plans.map((p) => p.plan.weightKg).toList(), [100, 100, 100, 100, 100, 90]);
+    await rules.rollback(rec.id);
+    plans = await planner.plansOf(pdeId);
+    expect(plans.every((p) => p.plan.repsMin == 8 && p.plan.repsMax == 10), isTrue);
   });
 }

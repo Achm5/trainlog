@@ -184,4 +184,84 @@ void main() {
       isEmpty,
     );
   });
+
+  group('Автопрогрессия', () {
+    const progression = RuleDef(
+      id: 4,
+      code: 'AUTO_PROGRESSION',
+      name: 'Автопрогрессия',
+      trigger: 'session_completed',
+      scope: 'exercise',
+      condition: {'type': 'progression', 'sessions': 2, 'rir_margin': 1},
+      action: {'type': 'increase_weight', 'pct': 0.025, 'min_step_kg': 2.5},
+      priority: 60,
+      cooldownDays: 14,
+    );
+    const repsCut = RuleDef(
+      id: 5,
+      code: 'REPS_CUT',
+      name: 'Снизить повторы',
+      trigger: 'session_completed',
+      scope: 'exercise',
+      condition: {'type': 'last_sessions_status', 'sessions': 2, 'status': 'partial'},
+      action: {'type': 'reduce_reps', 'reps': 2, 'min_reps': 1},
+      priority: 90,
+      cooldownDays: 14,
+    );
+    const all = [...rules, progression, repsCut];
+    List<Candidate> go(List<ExerciseFacts> ex, {List<RecState> existing = const []}) => evaluateRules(
+        trigger: 'session_completed', rules: all, exercises: ex, program: const ProgramFacts(), existing: existing,
+        now: now, weightStep: 2.5);
+    ExerciseFacts f(List<SessionOutcome> s, {double? weight = 100, int min = 8, int max = 10}) => ExerciseFacts(
+        pdeId: 1, exerciseName: 'Жим', isCompound: true, lastSessions: s, currentWeightKg: weight,
+        currentRepsMin: min, currentRepsMax: max);
+
+    const top = SessionOutcome(status: 'done', shortfalls: [0, 0, 0], topOfRange: true, rirMargin: 0);
+    const easyRir = SessionOutcome(status: 'done', shortfalls: [0, 0, 0], rirMargin: 1);
+    const plain = SessionOutcome(status: 'done', shortfalls: [0, 0, 0], rirMargin: 0);
+    const partial = SessionOutcome(status: 'partial', shortfalls: [1, 3, 4]);
+
+    test('формула прибавки: max(2,5 кг; 2,5% с округлением до шага)', () {
+      expect(increasedWeight(weight: 100, pct: 0.025, step: 2.5), 102.5);
+      expect(increasedWeight(weight: 60, pct: 0.025, step: 2.5), 62.5);
+      expect(increasedWeight(weight: 200, pct: 0.025, step: 2.5), 205);
+      expect(increasedWeight(weight: 130, pct: 0.05, step: 1), 137); // 6,5 → 7
+    });
+    test('две сессии с верхом диапазона → +2,5 кг', () {
+      final c = go([f([top, top])]).single;
+      expect(c.rule.code, 'AUTO_PROGRESSION');
+      expect(c.proposal, {'type': 'increase_weight', 'from_kg': 100.0, 'to_kg': 102.5, 'delta_kg': 2.5});
+      expect(c.facts['reason'], 'top_of_range');
+    });
+    test('запас RIR ≥ 1 сверх целевого тоже считается', () {
+      final c = go([f([easyRir, top])]).single;
+      expect(c.facts['reason'], 'rir');
+    });
+    test('не срабатывает: одна лёгкая сессия, обычное выполнение, нет веса', () {
+      expect(go([f([top])]), isEmpty);
+      expect(go([f([top, plain])]), isEmpty);
+      expect(go([f([top, top], weight: null)]), isEmpty);
+      expect(go([f([top, top], weight: 0)]), isEmpty);
+    });
+    test('две частичные сессии → повторы 8–10 → 6–8, вес не трогается', () {
+      final c = go([f([partial, partial])]).single;
+      expect(c.rule.code, 'REPS_CUT');
+      expect(c.proposal, {'type': 'reduce_reps', 'from_min': 8, 'from_max': 10, 'to_min': 6, 'to_max': 8});
+    });
+    test('повторы не опускаются ниже min_reps', () {
+      final c = go([f([partial, partial], min: 2, max: 3)]).single;
+      expect(c.proposal['to_min'], 1);
+      expect(c.proposal['to_max'], 1);
+      expect(go([f([partial, partial], min: 1, max: 1)]), isEmpty);
+    });
+    test('провал важнее: TWO_RED_IN_ROW по приоритету', () {
+      expect(go([f([failed6, failed6])]).single.rule.code, 'TWO_RED_IN_ROW');
+    });
+    test('cooldown 14 дней', () {
+      RecState rec(int daysAgo) =>
+          RecState(ruleId: 4, pdeId: 1, status: 'accepted', resolvedAt: now.subtract(Duration(days: daysAgo)));
+      expect(go([f([top, top])], existing: [rec(10)]), isEmpty);
+      expect(go([f([top, top])], existing: [rec(15)]), hasLength(1));
+    });
+  });
 }

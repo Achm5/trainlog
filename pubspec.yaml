@@ -56,6 +56,7 @@ dependencies:
   crypto: ^3.0.8
   collection: ^1.19.1
   timezone: any
+  pdf: ^3.11.3
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +81,12 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Ресурсы PDF-отчёта: логотип и шрифт Roboto с кириллицей (Apache 2.0).
+  assets:
+    - assets/pdf/logo.png
+    - assets/fonts/Roboto-Regular.ttf
+    - assets/fonts/Roboto-Bold.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

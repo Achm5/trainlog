@@ -29,8 +29,10 @@ void main() {
     final shares = await (db.select(db.exerciseMuscles)..where((m) => m.exerciseId.equals(bench.id))).get();
     expect(shares.map((m) => m.share).toList()..sort(), [0.5, 0.5, 1.0]);
     final rules = await db.select(db.rules).get();
-    expect(rules.map((r) => r.code).toSet(), {'TWO_RED_IN_ROW', 'E1RM_PLATEAU', 'EARLY_DELOAD'});
-    expect({for (final r in rules) r.code: r.priority}, {'TWO_RED_IN_ROW': 100, 'E1RM_PLATEAU': 50, 'EARLY_DELOAD': 80});
+    expect(rules.map((r) => r.code).toSet(),
+        {'TWO_RED_IN_ROW', 'E1RM_PLATEAU', 'EARLY_DELOAD', 'REPS_CUT', 'AUTO_PROGRESSION'});
+    expect({for (final r in rules) r.code: r.priority},
+        {'TWO_RED_IN_ROW': 100, 'E1RM_PLATEAU': 50, 'EARLY_DELOAD': 80, 'REPS_CUT': 90, 'AUTO_PROGRESSION': 60});
   });
 
   test('settings — ровно одна строка', () async {

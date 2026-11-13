@@ -130,3 +130,27 @@ final waterTargetProvider = FutureProvider.family<int?, String>((ref, d) {
   return ref.watch(nutritionRepoProvider).waterTarget(parseYmd(d));
 });
 final waterProvider = StreamProvider.family<int, String>((ref, d) => ref.watch(nutritionRepoProvider).watchWater(d));
+
+/// Тумблер «Предупреждать о перетренированности».
+class OvertrainingEnabled extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(initialOvertrainingProvider);
+
+  Future<void> toggle(bool on) async {
+    state = on;
+    await ref.read(appStateProvider).set(stateOvertrainingWarning, on ? '1' : '0');
+  }
+}
+
+final initialOvertrainingProvider = Provider<bool>((ref) => true);
+final overtrainingEnabledProvider = NotifierProvider<OvertrainingEnabled, bool>(OvertrainingEnabled.new);
+
+/// Предупреждение по последней закрытой неделе или null (выключено, признаков мало, скрыто).
+final overtrainingProvider = FutureProvider<OvertrainingCheck?>((ref) async {
+  if (!ref.watch(overtrainingEnabledProvider)) return null;
+  ref.watch(historyProvider); // пересчёт после завершения тренировок
+  final check = await ref.watch(analyticsRepoProvider).overtraining(today());
+  if (!check.warn) return null;
+  final dismissed = await ref.read(appStateProvider).get(stateOvertrainingDismissed);
+  return dismissed == check.weekStart ? null : check;
+});

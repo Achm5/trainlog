@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../data/app_state.dart';
 import '../../data/database.dart';
 import '../../domain/dates.dart';
 import '../../providers.dart';
@@ -42,6 +43,7 @@ class TodayScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(12),
         children: [
           BackupReminderCard(onOpen: () => context.push('/data')),
+          const OvertrainingCard(),
           for (final r in newRecs) Appear(key: ValueKey('rec-${r.rec.id}'), child: RecommendationCard(r)),
           if (inProgress != null)
             Card(
@@ -143,6 +145,64 @@ class TodayScreen extends ConsumerWidget {
               onTap: () => context.push('/session/${h.session.id}'),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Предупреждение о перетренированности по последней закрытой неделе.
+class OvertrainingCard extends ConsumerWidget {
+  const OvertrainingCard({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final check = ref.watch(overtrainingProvider).value;
+    if (check == null) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      color: scheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.monitor_heart_outlined, color: scheme.onErrorContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Возможна перетренированность',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scheme.onErrorContainer)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text('Неделя с ${ruDate(parseYmd(check.weekStart))}: совпало признаков — ${check.signals.length}.',
+                style: TextStyle(color: scheme.onErrorContainer)),
+            for (final sig in check.signals)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('• ${sig.text}', style: TextStyle(color: scheme.onErrorContainer)),
+              ),
+            const SizedBox(height: 6),
+            Text('Стоит подумать о разгрузочной неделе, сне и питании. Это ориентир по журналу, а не медицинская оценка.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onErrorContainer)),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () async {
+                    await ref.read(appStateProvider).set(stateOvertrainingDismissed, check.weekStart);
+                    ref.invalidate(overtrainingProvider);
+                  },
+                  child: const Text('Скрыть до следующей недели'),
+                ),
+                TextButton(onPressed: () => context.push('/settings'), child: const Text('Отключить')),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

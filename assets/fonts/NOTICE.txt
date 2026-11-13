@@ -1,0 +1,3 @@
+Roboto-Regular.ttf, Roboto-Bold.ttf — шрифт Roboto, Copyright 2011 Google Inc.
+Лицензия Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+Используется в PDF-отчёте за мезоцикл (кириллица).
