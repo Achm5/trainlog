@@ -90,6 +90,8 @@ void main() {
       ),
     );
     expect(String.fromCharCodes(pdf.sublist(0, 5)), '%PDF-');
+    // В CI образец отчёта попадает в логи сборки (ветка ci-logs) для просмотра вёрстки.
+    if (Directory('ci-logs').existsSync()) File('ci-logs/sample-report.pdf').writeAsBytesSync(pdf);
     expect(pdf.length, greaterThan(10000));
     expect(reportFileName(r), 'achm-report-Силовой-блок-2026-11-02.pdf');
   });
