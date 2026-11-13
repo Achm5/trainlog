@@ -9,6 +9,7 @@ import 'package:trainlog/data/journal_repo.dart';
 import 'package:trainlog/data/nutrition_repo.dart';
 import 'package:trainlog/data/planner_repo.dart';
 import 'package:trainlog/data/report_repo.dart';
+import 'package:trainlog/i18n.dart';
 import 'package:trainlog/services/mesocycle_pdf.dart';
 
 void main() {
@@ -94,6 +95,30 @@ void main() {
     if (Directory('ci-logs').existsSync()) File('ci-logs/sample-report.pdf').writeAsBytesSync(pdf);
     expect(pdf.length, greaterThan(10000));
     expect(reportFileName(r), 'achm-report-Силовой-блок-2026-11-02.pdf');
+  });
+
+  test('отчёт на английском и в фунтах', () async {
+    await session(1);
+    await session(2);
+    await NutritionRepo(db).setWeight(DateTime.utc(2026, 10, 5), 82);
+    await NutritionRepo(db).setWeight(DateTime.utc(2026, 10, 19), 81);
+    I18n.lang = AppLang.en;
+    I18n.pounds = true;
+    addTearDown(() {
+      I18n.lang = AppLang.ru;
+      I18n.pounds = false;
+    });
+    final r = await ReportRepo(db).build(programId, now: DateTime.utc(2026, 11, 2));
+    final pdf = await buildMesocyclePdf(
+      r,
+      PdfAssets(
+        regular: ByteData.sublistView(File('assets/fonts/Roboto-Regular.ttf').readAsBytesSync()),
+        bold: ByteData.sublistView(File('assets/fonts/Roboto-Bold.ttf').readAsBytesSync()),
+        logo: File('assets/pdf/logo.png').readAsBytesSync(),
+      ),
+    );
+    expect(pdf.length, greaterThan(10000));
+    if (Directory('ci-logs').existsSync()) File('ci-logs/sample-report-en.pdf').writeAsBytesSync(pdf);
   });
 
   test('отчёт пустой программы строится', () async {

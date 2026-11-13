@@ -970,7 +970,7 @@ const enStrings = <String, String>{
   'Действие (JSON)':
       'Action (JSON)',
   'Некорректный JSON: нужен объект с полем "type"':
-      'Invalid JSON: an object with a \"type\" field is required',
+      'Invalid JSON: an object with a "type" field is required',
   '{0} · приоритет {1} · пауза {2} дн.':
       '{0} · priority {1} · cooldown {2} d',
   'Приоритет':
