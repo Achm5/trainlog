@@ -90,3 +90,56 @@ double? deltaPct(double? current, double? previous) {
   if (current == null || previous == null || previous <= 0) return null;
   return (current - previous) / previous * 100;
 }
+
+/// Ход тренировки: закрытые рабочие подходы, их общее число и тоннаж.
+class SessionProgress {
+  const SessionProgress({required this.closed, required this.total, required this.tonnageKg});
+
+  /// Рабочие подходы с результатом или пропущенные.
+  final int closed;
+  final int total;
+  final double tonnageKg;
+
+  double get share => total == 0 ? 0 : closed / total;
+  bool get complete => total > 0 && closed >= total;
+}
+
+/// Подход для расчёта хода тренировки и строки «прошлый раз».
+typedef SetBrief = ({bool isWarmup, double? weightKg, int? reps, bool skipped});
+
+SessionProgress sessionProgress(Iterable<SetBrief> sets) {
+  var closed = 0, total = 0;
+  var ton = 0.0;
+  for (final s in sets) {
+    if (s.isWarmup) continue;
+    total++;
+    if (s.skipped) {
+      closed++;
+    } else if (s.reps != null) {
+      closed++;
+      ton += (s.weightKg ?? 0) * s.reps!;
+    }
+  }
+  return SessionProgress(closed: closed, total: total, tonnageKg: ton);
+}
+
+String _w(double v) {
+  final r = (v * 100).round() / 100;
+  return r == r.roundToDouble() ? r.toStringAsFixed(0) : r.toString().replaceAll('.', ',');
+}
+
+/// Краткая запись рабочих подходов: «100 × 8, 8, 7 · 102,5 × 6» — повторы группируются по весу.
+String setsSummary(Iterable<SetBrief> sets) {
+  final groups = <(double?, List<int>)>[];
+  for (final s in sets) {
+    if (s.isWarmup || s.skipped || s.reps == null) continue;
+    if (groups.isNotEmpty && groups.last.$1 == s.weightKg) {
+      groups.last.$2.add(s.reps!);
+    } else {
+      groups.add((s.weightKg, [s.reps!]));
+    }
+  }
+  return [
+    for (final (w, reps) in groups) w == null || w == 0 ? reps.join(', ') : '${_w(w)} × ${reps.join(', ')}',
+  ].join(' · ');
+}

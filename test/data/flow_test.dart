@@ -262,4 +262,31 @@ void main() {
     expect((await (db.select(db.exerciseMuscles)..where((m) => m.exerciseId.equals(ex.id))).get()).length, 2);
     expect(() => planner.importProgramCsv('a;b\n1;2', startDate: DateTime.utc(2026, 11, 16)), throwsFormatException);
   });
+
+  test('«прошлый раз»: подходы упражнения из предыдущей завершённой тренировки', () async {
+    final bench = await exerciseId('Жим лёжа');
+    Future<int> free(DateTime date, List<(double, int)> work, {bool finish = true}) async {
+      final sid = await journal.startFreeSession(date);
+      final seId = await journal.addExerciseToSession(sid, bench);
+      final warm = await journal.addSet(seId, warmup: true);
+      await journal.saveSet(warm, weightKg: 40, reps: 10, rir: null, isWarmup: true);
+      for (final (w, r) in work) {
+        await journal.saveSet(await journal.addSet(seId), weightKg: w, reps: r, rir: 2);
+      }
+      if (finish) await journal.finishSession(sid);
+      return sid;
+    }
+
+    final first = await free(DateTime.utc(2026, 11, 2), [(100.0, 8), (100.0, 8), (100.0, 7)]);
+    final second = await free(DateTime.utc(2026, 11, 5), [(102.5, 6)]);
+    final third = await free(DateTime.utc(2026, 11, 9), [(105.0, 5)], finish: false);
+
+    expect(await journal.previousPerformance(bench, before: await journal.session(first)), isNull);
+    final prevOfSecond = await journal.previousPerformance(bench, before: await journal.session(second));
+    expect(prevOfSecond!.date, DateTime.utc(2026, 11, 2));
+    expect(prevOfSecond.summary, '100 × 8, 8, 7');
+    final view = (await journal.watchSessionExercises(third).first).single;
+    expect(view.previous!.summary, '102,5 × 6');
+    expect(view.previous!.date, DateTime.utc(2026, 11, 5));
+  });
 }

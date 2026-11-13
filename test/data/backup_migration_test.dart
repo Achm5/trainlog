@@ -126,6 +126,22 @@ void main() {
     await target.close();
   });
 
+  test('миграция v3 → v4 добавляет правила автопрогрессии и не трогает правки существующих', () async {
+    final file = File('${dir.path}/v3.sqlite');
+    var db = AppDatabase.file(file);
+    await (db.delete(db.rules)..where((r) => r.code.isIn(const ['AUTO_PROGRESSION', 'REPS_CUT']))).go();
+    await (db.update(db.rules)..where((r) => r.code.equals('TWO_RED_IN_ROW'))).write(const RulesCompanion(cooldownDays: Value(3)));
+    await db.customStatement('PRAGMA user_version = 3');
+    await db.close();
+
+    db = AppDatabase.file(file);
+    final rules = {for (final r in await db.select(db.rules).get()) r.code: r};
+    expect(rules.keys.toSet(), {'TWO_RED_IN_ROW', 'E1RM_PLATEAU', 'EARLY_DELOAD', 'REPS_CUT', 'AUTO_PROGRESSION'});
+    expect(rules['TWO_RED_IN_ROW']!.cooldownDays, 3);
+    expect((await db.customSelect('PRAGMA user_version').getSingle()).data.values.first, db.schemaVersion);
+    await db.close();
+  });
+
   test('CSV журнала и дневника', () async {
     final db = AppDatabase.memory();
     await fill(db);

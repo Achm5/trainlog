@@ -7,10 +7,51 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../domain/dates.dart';
+import '../../domain/program_templates.dart';
 import '../../providers.dart';
 import '../common.dart';
 
 const programStatusLabels = {'draft': 'Черновик', 'active': 'Активная', 'archived': 'Архив'};
+
+/// Выбор готовой программы: создаёт черновик, в котором остаётся задать веса.
+Future<void> pickProgramTemplate(BuildContext context, WidgetRef ref) async {
+  final template = await showModalBottomSheet<ProgramTemplate>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (c) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.only(bottom: 16),
+        children: [
+          const ListTile(
+            title: Text('Готовые программы', style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('Создаётся черновик: упражнения, подходы и повторы уже расставлены, '
+                'последняя неделя — разгрузка. Веса и дни недели можно поменять.'),
+          ),
+          for (final t in programTemplates)
+            ListTile(
+              leading: const Icon(Icons.auto_awesome_motion_outlined),
+              title: Text(t.name),
+              subtitle: Text('${t.description}\n${t.weeks} нед. · ${t.exercisesCount} упражнений'),
+              isThreeLine: true,
+              onTap: () => Navigator.pop(c, t),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (template == null) return;
+  try {
+    final id = await ref.read(plannerRepoProvider).createFromTemplate(template, startDate: nearestMonday(today()));
+    if (context.mounted) {
+      toast(context, 'Черновик создан. Задайте веса и сделайте программу активной.');
+      context.push('/program/$id');
+    }
+  } catch (e) {
+    if (context.mounted) toast(context, 'Не удалось создать программу: $e');
+  }
+}
 
 /// Список программ (мезоциклов).
 class ProgramsScreen extends ConsumerWidget {
@@ -22,6 +63,11 @@ class ProgramsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Программы'),
         actions: [
+          IconButton(
+            tooltip: 'Готовые программы',
+            icon: const Icon(Icons.auto_awesome_motion_outlined),
+            onPressed: () => pickProgramTemplate(context, ref),
+          ),
           IconButton(
             tooltip: 'Импорт программы из CSV',
             icon: const Icon(Icons.upload_file),
@@ -56,11 +102,22 @@ class ProgramsScreen extends ConsumerWidget {
         value: ref.watch(programsProvider),
         builder: (list) {
           if (list.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('Программ пока нет. Создайте мезоцикл: дни недели, упражнения и прогрессию по неделям.',
-                    textAlign: TextAlign.center),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Программ пока нет. Возьмите готовую и поправьте под себя или соберите мезоцикл '
+                        'с нуля: дни недели, упражнения и прогрессию по неделям.', textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.auto_awesome_motion_outlined),
+                      label: const Text('Готовые программы'),
+                      onPressed: () => pickProgramTemplate(context, ref),
+                    ),
+                  ],
+                ),
               ),
             );
           }

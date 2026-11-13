@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../domain/dates.dart';
 import '../domain/planning.dart';
+import '../domain/program_templates.dart';
 import 'database.dart';
 
 /// Операции планировщика: программа, недели, дни, упражнения, план по неделям.
@@ -61,6 +62,40 @@ class PlannerRepo {
               name: Value(weekdayFull[days[i] - 1]),
               sortOrder: Value(i),
             ));
+      }
+      return id;
+    });
+  }
+
+  /// Создаёт черновик программы из готового шаблона: дни, упражнения, план по неделям,
+  /// последняя неделя — разгрузочная. Веса не задаются (режим «вручную»).
+  Future<int> createFromTemplate(ProgramTemplate t, {required DateTime startDate}) {
+    return db.transaction(() async {
+      final byName = {for (final e in await db.select(db.exercises).get()) e.name: e};
+      final id = await createProgram(
+        name: t.name,
+        startDate: startDate,
+        weeksCount: t.weeks,
+        timeLimitMin: 75,
+        weekdays: [for (final d in t.days) d.weekday],
+        deloadWeekNo: t.weeks,
+      );
+      final dayIds = {for (final d in await daysOf(id)) d.weekday: d.id};
+      for (final d in t.days) {
+        final dayId = dayIds[d.weekday]!;
+        await renameDay(dayId, d.name);
+        for (final e in d.exercises) {
+          final ex = byName[e.name];
+          if (ex == null) throw StateError('В справочнике нет упражнения «${e.name}»');
+          await addExercise(
+            dayId: dayId,
+            exerciseId: ex.id,
+            sets: e.sets,
+            repsMin: e.repsMin,
+            repsMax: e.repsMax,
+            restSec: ex.kind == 'compound' ? 150 : 90,
+          );
+        }
       }
       return id;
     });

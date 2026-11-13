@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'features/analytics/analytics_screen.dart';
 import 'features/data/data_screen.dart';
+import 'features/data/error_log_screen.dart';
 import 'features/data/lock_gate.dart';
 import 'features/journal/session_screen.dart';
 import 'features/motion.dart';
@@ -40,6 +41,7 @@ final appRouter = GoRouter(
     GoRoute(path: '/rules', builder: (c, s) => const RulesScreen()),
     GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
     GoRoute(path: '/data', builder: (c, s) => const DataScreen()),
+    GoRoute(path: '/errors', builder: (c, s) => const ErrorLogScreen()),
     GoRoute(
       path: '/section/:sid',
       builder: (c, s) => navSections.firstWhere((t) => t.id == s.pathParameters['sid'], orElse: () => navSections.first).screen,

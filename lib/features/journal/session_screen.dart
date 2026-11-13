@@ -14,6 +14,7 @@ import '../../domain/strength.dart';
 import '../../providers.dart';
 import '../common.dart';
 import '../motion.dart';
+import 'plate_calculator.dart';
 import '../recommendations/recommendations.dart';
 import '../reference/exercises_screen.dart';
 import '../ruler_picker.dart';
@@ -93,6 +94,10 @@ class SessionScreen extends ConsumerWidget {
         children: [
           if (inProgress) const _KeepScreenOn(),
           const RestTimerBar(),
+          _SessionProgressBar(
+            session: session,
+            exercises: ref.watch(sessionExercisesProvider(sessionId)).value ?? const <SessionExerciseView>[],
+          ),
           Expanded(
             child: AsyncView(
               value: ref.watch(sessionExercisesProvider(sessionId)),
@@ -140,6 +145,85 @@ class SessionScreen extends ConsumerWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ход тренировки: полоса выполненных рабочих подходов, время и тоннаж.
+class _SessionProgressBar extends StatefulWidget {
+  const _SessionProgressBar({required this.session, required this.exercises});
+  final WorkoutSession session;
+  final List<SessionExerciseView> exercises;
+
+  @override
+  State<_SessionProgressBar> createState() => _SessionProgressBarState();
+}
+
+class _SessionProgressBarState extends State<_SessionProgressBar> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // Время идёт только у незавершённой тренировки; раз в 20 с достаточно для минут.
+    _ticker = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted && widget.session.status == 'in_progress') setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = sessionProgress([for (final e in widget.exercises) for (final s in e.sets) setBrief(s)]);
+    if (p.total == 0) return const SizedBox.shrink();
+    final s = widget.session;
+    final endMs = s.finishedAt ?? DateTime.now().millisecondsSinceEpoch;
+    final seconds = ((endMs - s.startedAt) ~/ 1000).clamp(0, 24 * 3600).toInt();
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final tons = p.tonnageKg / 1000;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('Подходы ${p.closed} из ${p.total}', style: t.titleSmall),
+              const Spacer(),
+              Icon(Icons.schedule, size: 16, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+              Text(formatDuration(seconds), style: t.bodyMedium),
+              if (p.tonnageKg > 0) ...[
+                const SizedBox(width: 12),
+                Icon(Icons.fitness_center, size: 16, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Text('${tons.toStringAsFixed(1).replaceAll('.', ',')} т', style: t.bodyMedium),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: p.share),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+              builder: (context, v, _) => LinearProgressIndicator(
+                value: v,
+                minHeight: 8,
+                color: p.complete ? const Color(0xFF2E9E4F) : scheme.primary,
+                backgroundColor: scheme.surfaceContainerHighest,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -210,6 +294,14 @@ class _ExerciseCard extends ConsumerWidget {
                           'План: ${plan.sets} × ${plan.repsMin}–${plan.repsMax} · ${formatKg(plan.weightKg)} кг · RIR ${plan.targetRir}',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
+                      if (view.previous case final prev?)
+                        Text(
+                          'Прошлый раз (${ruDate(prev.date).substring(0, 5)}): ${prev.summary}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: Theme.of(context).colorScheme.primary),
+                        ),
                     ],
                   ),
                 ),
@@ -220,6 +312,14 @@ class _ExerciseCard extends ConsumerWidget {
                         await journal.addSet(view.se.id);
                       case 'warmup':
                         await journal.addSet(view.se.id, warmup: true);
+                      case 'plates':
+                        final next = sets.where((x) => !x.isWarmup && x.reps == null && x.status == null).firstOrNull;
+                        final lastDone = sets.where((x) => !x.isWarmup && x.reps != null).lastOrNull;
+                        await showPlateCalculator(
+                          context,
+                          weightKg: next?.plannedWeightKg ?? lastDone?.weightKg ?? plan?.weightKg ?? 60,
+                          step: step,
+                        );
                       case 'remove':
                         if (await confirm(context, 'Убрать упражнение из тренировки?')) {
                           await journal.removeSessionExercise(view.se.id);
@@ -229,6 +329,7 @@ class _ExerciseCard extends ConsumerWidget {
                   itemBuilder: (c) => const [
                     PopupMenuItem(value: 'set', child: Text('Добавить подход')),
                     PopupMenuItem(value: 'warmup', child: Text('Добавить разминочный подход')),
+                    PopupMenuItem(value: 'plates', child: Text('Блины на штангу')),
                     PopupMenuItem(value: 'remove', child: Text('Убрать упражнение')),
                   ],
                 ),

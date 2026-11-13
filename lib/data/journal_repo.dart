@@ -122,6 +122,7 @@ class JournalRepo {
     // Поток подходов — ведущий: любое изменение подхода обновляет экран.
     return sets.asyncMap((setRows) async {
       final rows = await q.get();
+      final current = await (db.select(db.workoutSessions)..where((s) => s.id.equals(sessionId))).getSingleOrNull();
       final bySe = <int, List<SetLog>>{};
       for (final r in setRows) {
         final s = r.readTable(db.setLogs);
@@ -137,10 +138,31 @@ class JournalRepo {
           r.readTableOrNull(db.programDayExercises)?.restSec,
           bySe[se.id] ?? const [],
           priorBestE1rm: await bestE1rm(se.exerciseId, exceptSessionId: sessionId),
+          previous: current == null ? null : await previousPerformance(se.exerciseId, before: current),
         ));
       }
       return out;
     });
+  }
+
+  /// Рабочие подходы упражнения в последней завершённой тренировке до сессии [before].
+  Future<PreviousPerformance?> previousPerformance(int exerciseId, {required WorkoutSession before}) async {
+    final ws = db.workoutSessions;
+    final q = db.select(db.sessionExercises).join([innerJoin(ws, ws.id.equalsExp(db.sessionExercises.sessionId))])
+      ..where(db.sessionExercises.exerciseId.equals(exerciseId) &
+          ws.status.equals('completed') &
+          ws.id.equals(before.id).not() &
+          (ws.date.isSmallerThanValue(before.date) |
+              (ws.date.equals(before.date) & ws.startedAt.isSmallerThanValue(before.startedAt))))
+      ..orderBy([OrderingTerm.desc(ws.date), OrderingTerm.desc(ws.startedAt)])
+      ..limit(5);
+    for (final r in await q.get()) {
+      final sets = (await _setsOf(r.readTable(db.sessionExercises).id))
+          .where((s) => !s.isWarmup && s.reps != null && s.status != 'skipped')
+          .toList();
+      if (sets.isNotEmpty) return PreviousPerformance(parseYmd(r.readTable(ws).date), sets);
+    }
+    return null;
   }
 
   Future<int> addExerciseToSession(int sessionId, int exerciseId) async {
@@ -403,7 +425,10 @@ class SessionSummary {
 }
 
 class SessionExerciseView {
-  SessionExerciseView(this.se, this.exercise, this.plan, this.restSec, this.sets, {this.priorBestE1rm});
+  SessionExerciseView(this.se, this.exercise, this.plan, this.restSec, this.sets, {this.priorBestE1rm, this.previous});
+
+  /// Результат упражнения в прошлой тренировке — подсказка «прошлый раз».
+  final PreviousPerformance? previous;
 
   /// Лучший расчётный 1ПМ упражнения в других сессиях — для отметки рекорда.
   final double? priorBestE1rm;
@@ -427,3 +452,16 @@ class SessionExerciseView {
 
   SetStatus? get status => SetStatus.fromDb(se.status);
 }
+
+/// Рабочие подходы упражнения из прошлой тренировки.
+class PreviousPerformance {
+  PreviousPerformance(this.date, this.sets);
+  final DateTime date;
+  final List<SetLog> sets;
+
+  /// «100 × 8, 8, 7».
+  String get summary => setsSummary([for (final s in sets) setBrief(s)]);
+}
+
+SetBrief setBrief(SetLog s) =>
+    (isWarmup: s.isWarmup, weightKg: s.weightKg, reps: s.reps, skipped: s.status == 'skipped');

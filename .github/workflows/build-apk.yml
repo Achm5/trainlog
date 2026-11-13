@@ -2,7 +2,7 @@ name: build-apk
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'preview/**']
   workflow_dispatch:
 
 permissions:
@@ -84,7 +84,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Сборка ${{ github.run_number }}
+          name: Сборка ${{ github.run_number }}${{ github.ref_name != 'main' && ' (предпросмотр)' || '' }}
+          prerelease: ${{ github.ref_name != 'main' }}
+          target_commitish: ${{ github.sha }}
           body: |
             trainlog-arm64.apk — для современных телефонов (64 бита), ставьте его.
             trainlog-arm32.apk — только для старых 32-битных устройств.

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:drift/drift.dart' show Value;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -15,6 +16,7 @@ import '../../data/backup.dart';
 import '../../data/database.dart';
 import '../../domain/dates.dart';
 import '../../providers.dart';
+import '../../services/error_log.dart';
 import '../../services/security.dart';
 import '../common.dart';
 import 'pin_pad.dart';
@@ -61,7 +63,8 @@ class _DataScreenState extends ConsumerState<DataScreen> {
       await action();
     } on BackupException catch (e) {
       if (mounted) toast(context, e.message);
-    } catch (e) {
+    } catch (e, st) {
+      ErrorLog.record('данные и защита', e, st);
       if (mounted) toast(context, 'Ошибка: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -196,6 +199,15 @@ class _DataScreenState extends ConsumerState<DataScreen> {
             title: const Text('Дневник питания'),
             subtitle: const Text('Строка на запись'),
             onTap: () => _shareCsv('achm-diary', _backup.diaryCsv),
+          ),
+          const Divider(),
+          const ListTile(title: Text('Диагностика', style: TextStyle(fontWeight: FontWeight.bold))),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: const Text('Журнал ошибок'),
+            subtitle: const Text('Что пошло не так на этом телефоне; хранится локально'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/errors'),
           ),
           const Divider(),
           const ListTile(title: Text('Защита', style: TextStyle(fontWeight: FontWeight.bold))),
