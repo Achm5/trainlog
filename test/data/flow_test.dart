@@ -231,4 +231,35 @@ void main() {
     // Оригинал не изменился.
     expect(src.first.plan.weightKg, 80);
   });
+
+  test('импорт программы из CSV: дни, недели, разгрузка, веса как в файле, новые упражнения', () async {
+    const csv = '\uFEFFprogram;weekday;exercise;week;sets;reps_min;reps_max;weight_kg;rir;rest_sec;deload;kind;muscles\n'
+        'М1;1;Приседания со штангой;1;4;6;6;72,5;2;240;0;;\n'
+        'М1;1;Приседания со штангой;2;4;6;6;77,5;2;240;0;;\n'
+        'М1;1;Приседания со штангой;3;3;5;5;65;4;240;1;;\n'
+        'М1;2;Болгарские выпады;1;3;8;10;12;2;180;0;compound;Квадрицепсы=1|Ягодицы=0,5\n';
+    final id = await planner.importProgramCsv(csv, startDate: DateTime.utc(2026, 11, 16));
+    final prog = await planner.watchProgram(id).first;
+    expect(prog!.name, 'М1');
+    expect(prog.status, 'draft');
+    expect(prog.weeksCount, 3);
+    expect((await planner.weeksOf(id)).where((w) => w.isDeload).single.weekNo, 3);
+    final days = await planner.daysOf(id);
+    expect(days.map((d) => d.weekday).toList(), [1, 2]);
+    final squat = (await planner.dayExercises(days[0].id)).single;
+    expect(squat.exerciseId, await exerciseId('Приседания со штангой'));
+    expect(squat.restSec, 240);
+    final plans = await planner.plansOf(squat.id);
+    expect(plans.map((v) => (v.plan.sets, v.plan.repsMin, v.plan.weightKg)).toList(), [(4, 6, 72.5), (4, 6, 77.5), (3, 5, 65.0)]);
+    // Пересчёт плана не трогает импортированные веса (в том числе не кратные шагу).
+    await planner.recalcProgram(id);
+    final lunge = (await planner.dayExercises(days[1].id)).single;
+    final lungePlans = await planner.plansOf(lunge.id);
+    expect(lungePlans.map((v) => v.plan.weightKg).toList(), [12, 12, 12]); // недостающие недели — копия первой
+    final ex = await (db.select(db.exercises)..where((e) => e.id.equals(lunge.exerciseId))).getSingle();
+    expect(ex.isCustom, isTrue);
+    expect(ex.kind, 'compound');
+    expect((await (db.select(db.exerciseMuscles)..where((m) => m.exerciseId.equals(ex.id))).get()).length, 2);
+    expect(() => planner.importProgramCsv('a;b\n1;2', startDate: DateTime.utc(2026, 11, 16)), throwsFormatException);
+  });
 }

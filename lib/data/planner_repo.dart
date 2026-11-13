@@ -66,6 +66,120 @@ class PlannerRepo {
     });
   }
 
+  /// Импорт программы из CSV (разделитель «;», первая строка — заголовки):
+  /// program;weekday;exercise;week;sets;reps_min;reps_max;weight_kg;rir;rest_sec;deload;kind;muscles
+  /// weekday — 1…7; deload — 1 для разгрузочной недели; kind и muscles («Группа=доля|Группа=доля»)
+  /// нужны только для упражнений, которых нет в справочнике. Веса импортируются как заданные вручную.
+  /// Создаёт черновик и возвращает его id.
+  Future<int> importProgramCsv(String csv, {required DateTime startDate}) {
+    final lines = csv.replaceAll('\uFEFF', '').split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
+    if (lines.length < 2) throw const FormatException('Файл пуст');
+    final head = [for (final h in lines.first.split(';')) h.trim().toLowerCase()];
+    int col(String name) {
+      final i = head.indexOf(name);
+      if (i < 0) throw FormatException('Нет колонки «$name»');
+      return i;
+    }
+
+    final cProgram = col('program'), cDay = col('weekday'), cEx = col('exercise'), cWeek = col('week');
+    final cSets = col('sets'), cMin = col('reps_min'), cMax = col('reps_max'), cWeight = col('weight_kg');
+    final cRir = head.indexOf('rir'), cRest = head.indexOf('rest_sec'), cDeload = head.indexOf('deload');
+    final cKind = head.indexOf('kind'), cMuscles = head.indexOf('muscles');
+    final rows = [for (final l in lines.skip(1)) [for (final c in l.split(';')) c.trim()]];
+    String? at(List<String> r, int i) => i < 0 || i >= r.length || r[i].isEmpty ? null : r[i];
+    int intAt(List<String> r, int i, String what) =>
+        int.tryParse(at(r, i) ?? '') ?? (throw FormatException('Не число в колонке «$what»: ${r.join(';')}'));
+
+    return db.transaction(() async {
+      final weeksCount = rows.map((r) => intAt(r, cWeek, 'week')).reduce((a, b) => a > b ? a : b);
+      if (weeksCount < 3 || weeksCount > 12) throw const FormatException('В программе должно быть от 3 до 12 недель');
+      final deloadWeeks = {for (final r in rows) if (at(r, cDeload) == '1') intAt(r, cWeek, 'week')};
+      final weekdays = {for (final r in rows) intAt(r, cDay, 'weekday')}.toList()..sort();
+      final programId = await createProgram(
+        name: at(rows.first, cProgram) ?? 'Импорт',
+        startDate: startDate,
+        weeksCount: weeksCount,
+        timeLimitMin: 75,
+        weekdays: weekdays,
+        deloadWeekNo: deloadWeeks.isEmpty ? null : deloadWeeks.first,
+      );
+      final weekIdByNo = {for (final w in await weeksOf(programId)) w.weekNo: w.id};
+      final dayIdByWeekday = {for (final d in await daysOf(programId)) d.weekday: d.id};
+      final exercises = {for (final e in await db.select(db.exercises).get()) e.name.toLowerCase(): e.id};
+      final muscles = {for (final m in await db.select(db.muscleGroups).get()) m.name.toLowerCase(): m.id};
+      final pdeByKey = <String, int>{};
+
+      for (final r in rows) {
+        final name = at(r, cEx) ?? (throw FormatException('Пустое упражнение: ${r.join(';')}'));
+        var exId = exercises[name.toLowerCase()];
+        if (exId == null) {
+          exId = await db.into(db.exercises).insert(ExercisesCompanion.insert(
+                name: name,
+                kind: at(r, cKind) == 'compound' ? 'compound' : 'isolation',
+                isCustom: const Value(true),
+              ));
+          exercises[name.toLowerCase()] = exId;
+          for (final part in (at(r, cMuscles) ?? '').split('|')) {
+            final kv = part.split('=');
+            final mId = muscles[kv.first.trim().toLowerCase()];
+            final share = kv.length > 1 ? double.tryParse(kv[1].replaceAll(',', '.')) : null;
+            if (mId != null && share != null && share >= 0.25 && share <= 1) {
+              await db.into(db.exerciseMuscles).insert(
+                  ExerciseMusclesCompanion.insert(exerciseId: exId, muscleGroupId: mId, share: share),
+                  mode: InsertMode.insertOrIgnore);
+            }
+          }
+        }
+        final day = intAt(r, cDay, 'weekday');
+        final key = '$day|$exId';
+        var pdeId = pdeByKey[key];
+        if (pdeId == null) {
+          pdeId = await db.into(db.programDayExercises).insert(ProgramDayExercisesCompanion.insert(
+                programDayId: dayIdByWeekday[day]!,
+                exerciseId: exId,
+                sortOrder: Value(pdeByKey.keys.where((k) => k.startsWith('$day|')).length),
+                restSec: Value(int.tryParse(at(r, cRest) ?? '') ?? 120),
+              ));
+          pdeByKey[key] = pdeId;
+        }
+        final repsMin = intAt(r, cMin, 'reps_min');
+        final repsMax = int.tryParse(at(r, cMax) ?? '') ?? repsMin;
+        await db.into(db.exerciseWeekPlans).insert(
+              ExerciseWeekPlansCompanion.insert(
+                programDayExerciseId: pdeId,
+                programWeekId: weekIdByNo[intAt(r, cWeek, 'week')]!,
+                sets: intAt(r, cSets, 'sets'),
+                repsMin: repsMin,
+                repsMax: repsMax < repsMin ? repsMin : repsMax,
+                weightKg: Value(double.tryParse((at(r, cWeight) ?? '').replaceAll(',', '.'))),
+                targetRir: Value((int.tryParse(at(r, cRir) ?? '') ?? 2).clamp(0, 5)),
+                isManual: const Value(true),
+              ),
+              mode: InsertMode.insertOrReplace,
+            );
+      }
+      // Недели, которых нет в файле для упражнения, заполняются копией его первой строки.
+      for (final pdeId in pdeByKey.values) {
+        final have = await (db.select(db.exerciseWeekPlans)..where((p) => p.programDayExerciseId.equals(pdeId))).get();
+        for (final w in weekIdByNo.entries) {
+          if (have.any((p) => p.programWeekId == w.value)) continue;
+          final t = have.first;
+          await db.into(db.exerciseWeekPlans).insert(ExerciseWeekPlansCompanion.insert(
+                programDayExerciseId: pdeId,
+                programWeekId: w.value,
+                sets: t.sets,
+                repsMin: t.repsMin,
+                repsMax: t.repsMax,
+                weightKg: Value(t.weightKg),
+                targetRir: Value(t.targetRir),
+                isManual: const Value(true),
+              ));
+        }
+      }
+      return programId;
+    });
+  }
+
   /// Копия программы (черновик): недели, дни, упражнения и план по неделям.
   /// [weightDeltaKg] прибавляется ко всем весам копии (стартовым и недельным).
   Future<int> copyProgram(int sourceId, {required DateTime startDate, double weightDeltaKg = 0}) {
