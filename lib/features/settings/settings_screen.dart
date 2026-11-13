@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/database.dart';
 import '../../domain/planning.dart';
 import '../../providers.dart';
+import '../../app.dart' show navSections;
 import '../common.dart';
 
 const roundingSteps = [0.5, 1.0, 1.25, 2.5];
@@ -22,6 +23,20 @@ class SettingsScreen extends ConsumerWidget {
         value: ref.watch(settingsProvider),
         builder: (s) => ListView(
           children: [
+            const ListTile(title: Text('Нижнее меню', style: TextStyle(fontWeight: FontWeight.bold))),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('«Журнал» и «Ещё» закреплены. Скрытые разделы открываются из «Ещё». '
+                  'Если разделов больше пяти, в меню остаются только значки.'),
+            ),
+            for (final t in navSections.where((t) => !t.fixed))
+              SwitchListTile(
+                secondary: Icon(t.icon),
+                title: Text(t.title),
+                value: ref.watch(navTabsProvider).contains(t.id),
+                onChanged: (v) => ref.read(navTabsProvider.notifier).toggle(t.id, v),
+              ),
+            const Divider(),
             const ListTile(title: Text('Расчёты тренировок', style: TextStyle(fontWeight: FontWeight.bold))),
             ListTile(
               title: const Text('Шаг округления веса'),

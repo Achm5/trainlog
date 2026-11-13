@@ -42,7 +42,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               ListTile(
                 title: const Text('Пол'),
-                trailing: SegmentedButton<String>(
+                subtitle: SegmentedButton<String>(
                   showSelectedIcon: false,
                   segments: const [ButtonSegment(value: 'm', label: Text('Муж.')), ButtonSegment(value: 'f', label: Text('Жен.'))],
                   selected: {s.sex},

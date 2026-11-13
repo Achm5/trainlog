@@ -30,8 +30,15 @@ Future<void> main() async {
     debugPrint('Закрытие недели не выполнено: $e');
   }
 
+  final savedTabs = await state.get(stateNavTabs);
+
   runApp(ProviderScope(
-    overrides: [databaseProvider.overrideWithValue(db), appStateProvider.overrideWithValue(state)],
+    overrides: [
+      databaseProvider.overrideWithValue(db),
+      appStateProvider.overrideWithValue(state),
+      if (savedTabs != null)
+        initialNavTabsProvider.overrideWithValue(savedTabs.split(',').where((t) => t.isNotEmpty).toSet()),
+    ],
     child: const TrainLogApp(),
   ));
 }

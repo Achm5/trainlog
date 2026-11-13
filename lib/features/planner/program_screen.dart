@@ -56,6 +56,17 @@ class _ProgramScreenState extends ConsumerState<ProgramScreen> {
                   case 'activate':
                     await planner.activate(id);
                     if (context.mounted) toast(context, 'Программа активна');
+                  case 'copy':
+                    final delta = await askNumber(context, 'Копия программы: прибавить к весам, кг',
+                        initial: 0, suffix: 'кг (можно 0)');
+                    if (delta == null) return;
+                    final end = addDays(weekStart(parseYmd(program.startDate)), 7 * program.weeksCount);
+                    final start = end.isAfter(today()) ? end : nearestMonday(today());
+                    final newId = await planner.copyProgram(id, startDate: start, weightDeltaKg: delta);
+                    if (context.mounted) {
+                      toast(context, 'Копия создана, старт ${ruDate(start)}. Веса можно поправить в упражнениях.');
+                      context.pushReplacement('/program/$newId');
+                    }
                   case 'archive':
                     await planner.archive(id);
                   case 'delete':
@@ -69,6 +80,7 @@ class _ProgramScreenState extends ConsumerState<ProgramScreen> {
               itemBuilder: (c) => [
                 if (program.status != 'active') const PopupMenuItem(value: 'activate', child: Text('Сделать активной')),
                 if (program.status != 'archived') const PopupMenuItem(value: 'archive', child: Text('В архив')),
+                const PopupMenuItem(value: 'copy', child: Text('Создать копию')),
                 const PopupMenuItem(value: 'delete', child: Text('Удалить')),
               ],
             ),

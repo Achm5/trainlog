@@ -46,13 +46,26 @@ class TodayScreen extends ConsumerWidget {
           if (inProgress != null)
             Card(
               color: Theme.of(context).colorScheme.primaryContainer,
-              child: ListTile(
-                leading: const Icon(Icons.play_arrow),
-                title: const Text('Незавершённая тренировка'),
-                subtitle: Text('Начата ${ruDate(parseYmd(inProgress.date))}'),
-                trailing: FilledButton(
-                  onPressed: () => context.push('/session/${inProgress.id}'),
-                  child: const Text('Продолжить'),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.play_arrow),
+                      title: const Text('Незавершённая тренировка'),
+                      subtitle: Text('Начата ${ruDate(parseYmd(inProgress.date))}'),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () => context.push('/session/${inProgress.id}'),
+                          child: const Text('Продолжить'),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

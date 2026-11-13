@@ -8,6 +8,7 @@ import 'data/nutrition_repo.dart';
 import 'data/planner_repo.dart';
 import 'data/reference_repo.dart';
 import 'data/rules_repo.dart';
+import 'domain/dates.dart';
 import 'services/notifications.dart';
 import 'services/off_client.dart';
 
@@ -104,3 +105,28 @@ final weightsProvider =
 final productsProvider =
     StreamProvider.family<List<Product>, String>((ref, q) => ref.watch(nutritionRepoProvider).watchProducts(query: q));
 final productProvider = StreamProvider.family<Product?, int>((ref, id) => ref.watch(nutritionRepoProvider).watchProduct(id));
+
+const stateNavTabs = 'nav_tabs';
+const defaultNavTabs = {'plan', 'analytics', 'nutrition'};
+
+/// Разделы, вынесенные в нижнее меню (кроме закреплённых «Журнал» и «Ещё»).
+class NavTabs extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => ref.watch(initialNavTabsProvider);
+
+  Future<void> toggle(String id, bool on) async {
+    state = on ? {...state, id} : ({...state}..remove(id));
+    await ref.read(appStateProvider).set(stateNavTabs, state.join(','));
+  }
+}
+
+final initialNavTabsProvider = Provider<Set<String>>((ref) => defaultNavTabs);
+final navTabsProvider = NotifierProvider<NavTabs, Set<String>>(NavTabs.new);
+
+final waterTargetProvider = FutureProvider.family<int?, String>((ref, d) {
+  // Норма зависит от веса и нормы питания — пересчитываем при их изменении.
+  ref.watch(dayWeightProvider(d));
+  ref.watch(targetProvider(d));
+  return ref.watch(nutritionRepoProvider).waterTarget(parseYmd(d));
+});
+final waterProvider = StreamProvider.family<int, String>((ref, d) => ref.watch(nutritionRepoProvider).watchWater(d));

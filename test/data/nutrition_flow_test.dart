@@ -178,4 +178,25 @@ void main() {
     expect(await repo.deleteProduct(rice), isFalse);
     expect(await repo.deleteProduct(chicken), isTrue);
   });
+
+  test('вода: сумма за день, отмена последней записи, норма по расходу и по весу', () async {
+    final day = DateTime.utc(2026, 11, 12);
+    expect(await repo.waterTarget(day), isNull); // нет веса
+    await repo.addWater(day, 250);
+    await repo.addWater(day, 500);
+    await repo.addWater(DateTime.utc(2026, 11, 13), 200);
+    expect(await repo.watchWater('2026-11-12').first, 750);
+    expect(await repo.undoWater(day), isTrue);
+    expect(await repo.watchWater('2026-11-12').first, 250);
+    expect(await repo.undoWater(DateTime.utc(2026, 11, 1)), isFalse);
+
+    await repo.setWeight(day, 80);
+    await db.delete(db.nutritionTargets).go();
+    expect(await repo.waterTarget(day), 2800); // 80 кг × 35 мл
+    await profile();
+    await repo.recalcFormulaTarget(on: day);
+    expect(await repo.waterTarget(day), 2750); // расход 2759 ккал → 2750 мл
+    expect(waterTargetMl(weightKg: 60, sex: 'f'), 1850); // 60 × 31 = 1860 → 1850
+    expect(waterTargetMl(weightKg: 80, sex: 'm', ageYears: 60), 2400);
+  });
 }

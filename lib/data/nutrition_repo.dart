@@ -301,6 +301,42 @@ class NutritionRepo {
     return true;
   }
 
+  // ---------- Вода ----------
+
+  /// Выпито за день, мл.
+  Stream<int> watchWater(String dateYmd) => (db.select(db.waterLogs)..where((w) => w.date.equals(dateYmd)))
+      .watch()
+      .map((rows) => rows.fold<int>(0, (s, r) => s + r.ml));
+
+  Future<void> addWater(DateTime date, int ml) =>
+      db.into(db.waterLogs).insert(WaterLogsCompanion.insert(date: ymd(date), ml: ml));
+
+  /// Отменяет последнюю запись воды за день. Возвращает false, если записей нет.
+  Future<bool> undoWater(DateTime date) async {
+    final last = await (db.select(db.waterLogs)
+          ..where((w) => w.date.equals(ymd(date)))
+          ..orderBy([(w) => OrderingTerm.desc(w.id)])
+          ..limit(1))
+        .getSingleOrNull();
+    if (last == null) return false;
+    await (db.delete(db.waterLogs)..where((w) => w.id.equals(last.id))).go();
+    return true;
+  }
+
+  /// Норма воды на день: по расходу из действующей нормы питания, иначе по весу и профилю. null — нет веса.
+  Future<int?> waterTarget(DateTime date) async {
+    final w = await latestWeight(onOrBefore: ymd(date));
+    if (w == null) return null;
+    final s = await db.getSettings();
+    final t = await currentTarget(date);
+    return waterTargetMl(
+      tdee: t?.tdee,
+      weightKg: w.trendKg ?? w.weightKg,
+      sex: s.sex,
+      ageYears: s.birthDate == null ? null : ageOn(parseYmd(s.birthDate!), date),
+    );
+  }
+
   // ---------- Рецепты ----------
 
   Future<List<RecipeItemView>> recipeItems(int recipeId) async {

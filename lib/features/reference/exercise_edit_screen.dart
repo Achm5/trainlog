@@ -153,13 +153,16 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
                 const SizedBox(height: 8),
                 for (final m in muscles)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: Text(m.name)),
+                        Text(m.name, style: Theme.of(context).textTheme.bodyLarge),
+                        const SizedBox(height: 2),
+                        Wrap(spacing: 6, children: [
                         for (final s in _shareOptions)
                           Padding(
-                            padding: const EdgeInsets.only(left: 4),
+                            padding: EdgeInsets.zero,
                             child: ChoiceChip(
                               label: Text(s.toString().replaceAll('.', ',')),
                               selected: _shares[m.id] == s,
@@ -167,6 +170,7 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
                               onSelected: (on) => setState(() => on ? _shares[m.id] = s : _shares.remove(m.id)),
                             ),
                           ),
+                        ]),
                       ],
                     ),
                   ),

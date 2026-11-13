@@ -283,17 +283,25 @@ class _BackupReminderCardState extends ConsumerState<BackupReminderCard> {
     });
     if (!_show) return const SizedBox.shrink();
     return Card(
-      child: ListTile(
-        leading: const Icon(Icons.backup_outlined),
-        title: const Text('Пора сделать резервную копию'),
-        subtitle: const Text('Копии не было больше недели'),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextButton(onPressed: _snooze, child: const Text('Позже')),
-            FilledButton.tonal(onPressed: widget.onOpen, child: const Text('Сделать')),
-          ],
-        ),
+      child: Column(
+        children: [
+          const ListTile(
+            leading: Icon(Icons.backup_outlined),
+            title: Text('Пора сделать резервную копию'),
+            subtitle: Text('Копии не было больше недели'),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(onPressed: _snooze, child: const Text('Позже')),
+                const SizedBox(width: 8),
+                FilledButton.tonal(onPressed: widget.onOpen, child: const Text('Сделать')),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

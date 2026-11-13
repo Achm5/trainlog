@@ -133,6 +133,15 @@ AdaptiveTdee adaptiveTdee({
   return AdaptiveTdee(valid: true, tdee: next, observed: observed, foodDays: dailyKcal.length, weighIns: weighIns);
 }
 
+/// Дневная норма воды, мл. Если известен суточный расход — 1 мл на 1 ккал расхода
+/// (он уже учитывает вес, рост, пол, возраст и активность). Иначе — по весу:
+/// 35 мл/кг для мужчин, 31 мл/кг для женщин, после 55 лет — 30 мл/кг. Округление до 50 мл.
+int waterTargetMl({double? tdee, required double weightKg, required String sex, int? ageYears}) {
+  final perKg = (ageYears ?? 0) >= 55 ? 30.0 : (sex == 'f' ? 31.0 : 35.0);
+  final ml = tdee != null && tdee > 0 ? tdee : weightKg * perKg;
+  return (ml / 50).round() * 50;
+}
+
 const mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
 const mealLabels = {'breakfast': 'Завтрак', 'lunch': 'Обед', 'dinner': 'Ужин', 'snack': 'Перекус'};
 

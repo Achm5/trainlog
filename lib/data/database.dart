@@ -34,6 +34,7 @@ const dbFileName = 'trainlog.sqlite';
     RecipeItems,
     FoodLogs,
     NutritionTargets,
+    WaterLogs,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -50,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -63,6 +64,11 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           // Версионные миграции: каждый шаг from → from + 1.
           if (from < 2) await createV2Indexes();
+          if (from < 3) {
+            final exists = await customSelect("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'water_logs'").get();
+            if (exists.isEmpty) await m.createTable(waterLogs);
+            await createIndexesAndTriggers();
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -78,6 +84,7 @@ class AppDatabase extends _$AppDatabase {
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_products_off_barcode ON products(barcode) WHERE source = 'off'");
     await customStatement('CREATE INDEX IF NOT EXISTS ix_workout_sessions_date ON workout_sessions(date)');
     await customStatement('CREATE INDEX IF NOT EXISTS ix_food_logs_date ON food_logs(date)');
+    await customStatement('CREATE INDEX IF NOT EXISTS ix_water_logs_date ON water_logs(date)');
     await customStatement('CREATE INDEX IF NOT EXISTS ix_recommendations_status ON recommendations(status)');
     for (final t in allTables) {
       final name = t.actualTableName;

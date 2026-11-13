@@ -300,6 +300,13 @@ class FoodLogs extends Table with Timestamps {
   RealColumn get carbsG => real()();
 }
 
+/// Трекер воды (добавлен в схеме v3, сверх 22 таблиц ТЗ).
+class WaterLogs extends Table with Timestamps {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get date => text()();
+  IntColumn get ml => integer()();
+}
+
 class NutritionTargets extends Table with Timestamps {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get validFrom => text().unique()();

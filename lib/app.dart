@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -18,6 +19,7 @@ import 'features/reference/exercise_edit_screen.dart';
 import 'features/reference/exercises_screen.dart';
 import 'features/reference/muscle_groups_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'providers.dart';
 
 int _id(GoRouterState s) => int.parse(s.pathParameters['id']!);
 
@@ -38,6 +40,10 @@ final appRouter = GoRouter(
     GoRoute(path: '/rules', builder: (c, s) => const RulesScreen()),
     GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
     GoRoute(path: '/data', builder: (c, s) => const DataScreen()),
+    GoRoute(
+      path: '/section/:sid',
+      builder: (c, s) => navSections.firstWhere((t) => t.id == s.pathParameters['sid'], orElse: () => navSections.first).screen,
+    ),
   ],
 );
 
@@ -79,7 +85,11 @@ class TrainLogApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Achm',
-      builder: (context, child) => LockGate(child: child ?? const SizedBox.shrink()),
+      // Крупный системный шрифт ограничиваем, чтобы подписи и кнопки не ломали вёрстку.
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.15,
+        child: LockGate(child: child ?? const SizedBox.shrink()),
+      ),
       routerConfig: appRouter,
       theme: _theme(Brightness.light),
       darkTheme: _theme(Brightness.dark),
@@ -91,15 +101,15 @@ class TrainLogApp extends StatelessWidget {
   }
 }
 
-class HomeShell extends StatefulWidget {
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMixin {
-  int _index = 0;
+class _HomeShellState extends ConsumerState<HomeShell> with SingleTickerProviderStateMixin {
+  String _current = 'journal';
 
   // Мягкое проявление вкладки при переключении (состояние вкладок сохраняется).
   late final _fade = AnimationController(vsync: this, duration: const Duration(milliseconds: 220), value: 1);
@@ -112,42 +122,78 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final enabled = ref.watch(navTabsProvider);
+    final tabs = [for (final t in navSections) if (t.fixed || enabled.contains(t.id)) t];
+    var index = tabs.indexWhere((t) => t.id == _current);
+    if (index < 0) index = 0;
     return Scaffold(
       body: SafeArea(
         child: FadeTransition(
           opacity: _fade,
           child: IndexedStack(
-            index: _index,
-            children: const [TodayScreen(), ProgramsScreen(), AnalyticsScreen(), NutritionScreen(), MoreScreen()],
+            index: index,
+            children: [for (final t in tabs) KeyedSubtree(key: ValueKey(t.id), child: t.screen)],
           ),
         ),
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
+        selectedIndex: index,
+        // Больше пяти разделов — только значки, без подписей.
+        labelBehavior: tabs.length > 5
+            ? NavigationDestinationLabelBehavior.alwaysHide
+            : NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: (i) {
-          if (i == _index) return;
-          setState(() => _index = i);
+          if (tabs[i].id == _current) return;
+          setState(() => _current = tabs[i].id);
           _fade.forward(from: 0.25);
         },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.fitness_center), label: 'Журнал'),
-          NavigationDestination(icon: Icon(Icons.calendar_month), label: 'План'),
-          NavigationDestination(icon: Icon(Icons.show_chart), label: 'Анализ'),
-          NavigationDestination(icon: Icon(Icons.restaurant), label: 'Питание'),
-          NavigationDestination(icon: Icon(Icons.menu), label: 'Ещё'),
+        destinations: [
+          for (final t in tabs) NavigationDestination(icon: Icon(t.icon), label: t.label, tooltip: t.title),
         ],
       ),
     );
   }
 }
 
-class MoreScreen extends StatelessWidget {
+/// Раздел, который можно вынести в нижнее меню.
+class NavSection {
+  const NavSection(this.id, this.label, this.title, this.icon, this.screen, {this.fixed = false});
+  final String id;
+  final String label;
+  final String title;
+  final IconData icon;
+  final Widget screen;
+
+  /// Закреплённые разделы нельзя убрать из меню.
+  final bool fixed;
+}
+
+const navSections = <NavSection>[
+  NavSection('journal', 'Журнал', 'Журнал тренировок', Icons.fitness_center, TodayScreen(), fixed: true),
+  NavSection('plan', 'План', 'Программы', Icons.calendar_month, ProgramsScreen()),
+  NavSection('analytics', 'Анализ', 'Аналитика', Icons.show_chart, AnalyticsScreen()),
+  NavSection('nutrition', 'Питание', 'Питание', Icons.restaurant, NutritionScreen()),
+  NavSection('recs', 'Советы', 'Рекомендации', Icons.lightbulb_outline, RecommendationsScreen()),
+  NavSection('exercises', 'Упражн.', 'Упражнения', Icons.list_alt, ExercisesScreen()),
+  NavSection('more', 'Ещё', 'Ещё', Icons.menu, MoreScreen(), fixed: true),
+];
+
+class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(navTabsProvider);
     return ListView(
       children: [
+        for (final t in navSections)
+          if (!t.fixed && !enabled.contains(t.id) && t.id != 'recs' && t.id != 'exercises')
+            ListTile(
+              leading: Icon(t.icon),
+              title: Text(t.title),
+              subtitle: const Text('Раздел скрыт из нижнего меню'),
+              onTap: () => context.push('/section/${t.id}'),
+            ),
         const ListTile(title: Text('Справочники и настройки', style: TextStyle(fontWeight: FontWeight.bold))),
         ListTile(
           leading: const Icon(Icons.person_outline),

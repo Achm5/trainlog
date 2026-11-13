@@ -66,6 +66,61 @@ class PlannerRepo {
     });
   }
 
+  /// Копия программы (черновик): недели, дни, упражнения и план по неделям.
+  /// [weightDeltaKg] прибавляется ко всем весам копии (стартовым и недельным).
+  Future<int> copyProgram(int sourceId, {required DateTime startDate, double weightDeltaKg = 0}) {
+    return db.transaction(() async {
+      final src = await (db.select(db.programs)..where((p) => p.id.equals(sourceId))).getSingle();
+      final srcWeeks = await weeksOf(sourceId);
+      final deload = srcWeeks.where((w) => w.isDeload).map((w) => w.weekNo).firstOrNull;
+      final srcDays = await daysOf(sourceId);
+      final newId = await createProgram(
+        name: '${src.name} (копия)',
+        startDate: startDate,
+        weeksCount: src.weeksCount,
+        timeLimitMin: src.timeLimitMin,
+        weekdays: [for (final d in srcDays) d.weekday],
+        deloadWeekNo: deload,
+        deloadSetsK: src.deloadSetsK,
+        deloadWeightK: src.deloadWeightK,
+        deloadRirAdd: src.deloadRirAdd,
+      );
+      final weekIdByNo = {for (final w in await weeksOf(newId)) w.weekNo: w.id};
+      final dayIdByWeekday = {for (final d in await daysOf(newId)) d.weekday: d.id};
+      double? shift(double? w) => w == null ? null : (w + weightDeltaKg < 0 ? 0 : w + weightDeltaKg);
+      for (final d in srcDays) {
+        await renameDay(dayIdByWeekday[d.weekday]!, d.name);
+        for (final e in await dayExercises(d.id)) {
+          final pdeId = await db.into(db.programDayExercises).insert(ProgramDayExercisesCompanion.insert(
+                programDayId: dayIdByWeekday[d.weekday]!,
+                exerciseId: e.exerciseId,
+                sortOrder: Value(e.sortOrder),
+                restSec: Value(e.restSec),
+                loadMode: Value(e.loadMode),
+                startWeightKg: Value(shift(e.startWeightKg)),
+                weeklyStepKg: Value(e.weeklyStepKg),
+              ));
+          for (final v in await plansOf(e.id)) {
+            final p = v.plan;
+            await db.into(db.exerciseWeekPlans).insert(ExerciseWeekPlansCompanion.insert(
+                  programDayExerciseId: pdeId,
+                  programWeekId: weekIdByNo[v.week.weekNo]!,
+                  sets: p.sets,
+                  repsMin: p.repsMin,
+                  repsMax: p.repsMax,
+                  weightKg: Value(shift(p.weightKg)),
+                  percent1rm: Value(p.percent1rm),
+                  targetRir: Value(p.targetRir),
+                  isManual: Value(p.isManual),
+                ));
+          }
+          await recalcPlans(pdeId);
+        }
+      }
+      return newId;
+    });
+  }
+
   Future<void> updateProgram(int id, ProgramsCompanion data) =>
       (db.update(db.programs)..where((p) => p.id.equals(id))).write(data);
 

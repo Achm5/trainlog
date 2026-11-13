@@ -7,8 +7,8 @@ void main() {
   setUp(() => db = AppDatabase.memory());
   tearDown(() => db.close());
 
-  test('схема: 22 таблицы, внешние ключи включены', () async {
-    expect(db.allTables.length, 22);
+  test('схема: 22 таблицы ТЗ и таблица воды, внешние ключи включены', () async {
+    expect(db.allTables.length, 23);
     final fk = await db.customSelect('PRAGMA foreign_keys').getSingle();
     expect(fk.data.values.first, 1);
   });

@@ -209,4 +209,26 @@ void main() {
     view = (await journal.watchSessionExercises(s2).first).single;
     expect(view.recordSetId, isNull);
   });
+
+  test('копия программы: структура и план переносятся, веса сдвигаются', () async {
+    final p = await program();
+    await planner.updatePde(
+        p.pdeId, const ProgramDayExercisesCompanion(loadMode: Value('linear'), startWeightKg: Value(80), weeklyStepKg: Value(2.5)));
+    final copyId = await planner.copyProgram(p.programId, startDate: DateTime.utc(2026, 12, 21), weightDeltaKg: 5);
+    final copy = await planner.watchProgram(copyId).first;
+    expect(copy!.name, 'Тест (копия)');
+    expect(copy.status, 'draft');
+    expect(copy.startDate, '2026-12-21');
+    expect((await planner.weeksOf(copyId)).where((w) => w.isDeload).single.weekNo, 5);
+    final days = await planner.daysOf(copyId);
+    expect(days.map((d) => d.weekday).toList(), [1, 3, 5]);
+    final pde = (await planner.dayExercises(days.first.id)).single;
+    expect(pde.startWeightKg, 85);
+    final src = await planner.plansOf(p.pdeId);
+    final plans = await planner.plansOf(pde.id);
+    expect(plans.map((v) => v.plan.sets).toList(), src.map((v) => v.plan.sets).toList());
+    expect(plans.map((v) => v.plan.weightKg).toList(), [85, 87.5, 90, 92.5, 82.5]); // 92,5 × 0,9 = 83,25 → 82,5
+    // Оригинал не изменился.
+    expect(src.first.plan.weightKg, 80);
+  });
 }
