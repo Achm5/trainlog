@@ -12,9 +12,9 @@ import '../../domain/dates.dart';
 import '../../domain/planning.dart';
 import '../../domain/strength.dart';
 import '../../providers.dart';
+import '../../services/notifications.dart';
 import '../common.dart';
 import '../motion.dart';
-import 'plate_calculator.dart';
 import '../recommendations/recommendations.dart';
 import '../reference/exercises_screen.dart';
 import '../ruler_picker.dart';
@@ -49,6 +49,7 @@ class SessionScreen extends ConsumerWidget {
         await journal.skipSet(s.id);
       }
       await journal.finishSession(sessionId);
+      await NotificationService.instance.cancelWorkout();
       // Движок правил — после пересчёта аналитики.
       await ref.read(rulesRepoProvider).onSessionCompleted(sessionId);
       ref.read(restTimerProvider.notifier).stop();
@@ -79,6 +80,7 @@ class SessionScreen extends ConsumerWidget {
               } else if (v == 'delete') {
                 if (await confirm(context, 'Удалить тренировку?', message: 'Все подходы этой сессии будут удалены.')) {
                   await journal.deleteSession(sessionId);
+                  await NotificationService.instance.cancelWorkout();
                   if (context.mounted) Navigator.of(context).pop();
                 }
               }
@@ -93,6 +95,10 @@ class SessionScreen extends ConsumerWidget {
       body: Column(
         children: [
           if (inProgress) const _KeepScreenOn(),
+          if (inProgress && ref.watch(workoutNotificationProvider))
+            _LockScreenStatus(
+              exercises: ref.watch(sessionExercisesProvider(sessionId)).value ?? const <SessionExerciseView>[],
+            ),
           const RestTimerBar(),
           _SessionProgressBar(
             session: session,
@@ -148,6 +154,81 @@ class SessionScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// Держит на экране блокировки уведомление «следующий подход» и отсчёт отдыха.
+/// Сам ничего не рисует; обновляет уведомление, когда меняются подходы или таймер.
+class _LockScreenStatus extends ConsumerStatefulWidget {
+  const _LockScreenStatus({required this.exercises});
+  final List<SessionExerciseView> exercises;
+
+  @override
+  ConsumerState<_LockScreenStatus> createState() => _LockScreenStatusState();
+}
+
+class _LockScreenStatusState extends ConsumerState<_LockScreenStatus> {
+  String? _shown;
+  Timer? _restOver;
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationService.instance.requestPermission();
+  }
+
+  @override
+  void dispose() {
+    _restOver?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final timerEnd = ref.watch(restTimerProvider);
+    final restEnd = timerEnd != null && timerEnd.isAfter(DateTime.now()) ? timerEnd : null;
+    final resting = restEnd != null;
+    final next = nextSet([
+      for (final e in widget.exercises)
+        (
+          name: e.exercise.name,
+          sets: [
+            for (final s in [...e.sets]..sort((a, b) => a.setNo.compareTo(b.setNo)))
+              (
+                isWarmup: s.isWarmup,
+                closed: s.reps != null || s.status == 'skipped',
+                weightKg: s.plannedWeightKg,
+                reps: s.plannedReps,
+              ),
+          ],
+        ),
+    ]);
+    if (widget.exercises.isEmpty) return const SizedBox.shrink();
+
+    final String title, body;
+    if (next == null) {
+      title = 'Все подходы выполнены';
+      body = 'Откройте приложение, чтобы завершить тренировку';
+    } else {
+      final target = next.reps == null
+          ? ''
+          : (next.weightKg == null ? '${next.reps} повт.' : '${formatKg(next.weightKg)} кг × ${next.reps}');
+      title = resting ? 'Отдых · дальше ${next.exercise}' : next.exercise;
+      body = ['Подход ${next.setNo} из ${next.setsTotal}', if (target.isNotEmpty) target].join(' · ');
+    }
+    final signature = '$title|$body|${restEnd?.millisecondsSinceEpoch ?? 0}';
+    if (signature != _shown) {
+      _shown = signature;
+      NotificationService.instance.showWorkout(title: title, body: body, restEnd: restEnd);
+      // Когда отдых закончится, уведомление нужно перерисовать без отсчёта.
+      _restOver?.cancel();
+      if (restEnd != null) {
+        _restOver = Timer(restEnd.difference(DateTime.now()) + const Duration(seconds: 1), () {
+          if (mounted) setState(() {});
+        });
+      }
+    }
+    return const SizedBox.shrink();
   }
 }
 
@@ -312,14 +393,6 @@ class _ExerciseCard extends ConsumerWidget {
                         await journal.addSet(view.se.id);
                       case 'warmup':
                         await journal.addSet(view.se.id, warmup: true);
-                      case 'plates':
-                        final next = sets.where((x) => !x.isWarmup && x.reps == null && x.status == null).firstOrNull;
-                        final lastDone = sets.where((x) => !x.isWarmup && x.reps != null).lastOrNull;
-                        await showPlateCalculator(
-                          context,
-                          weightKg: next?.plannedWeightKg ?? lastDone?.weightKg ?? plan?.weightKg ?? 60,
-                          step: step,
-                        );
                       case 'remove':
                         if (await confirm(context, 'Убрать упражнение из тренировки?')) {
                           await journal.removeSessionExercise(view.se.id);
@@ -329,7 +402,6 @@ class _ExerciseCard extends ConsumerWidget {
                   itemBuilder: (c) => const [
                     PopupMenuItem(value: 'set', child: Text('Добавить подход')),
                     PopupMenuItem(value: 'warmup', child: Text('Добавить разминочный подход')),
-                    PopupMenuItem(value: 'plates', child: Text('Блины на штангу')),
                     PopupMenuItem(value: 'remove', child: Text('Убрать упражнение')),
                   ],
                 ),

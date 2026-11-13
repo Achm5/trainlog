@@ -37,7 +37,14 @@ class SettingsScreen extends ConsumerWidget {
                 onChanged: (v) => ref.read(navTabsProvider.notifier).toggle(t.id, v),
               ),
             const Divider(),
-            const ListTile(title: Text('Предупреждения', style: TextStyle(fontWeight: FontWeight.bold))),
+            const ListTile(title: Text('Уведомления и предупреждения', style: TextStyle(fontWeight: FontWeight.bold))),
+            SwitchListTile(
+              secondary: const Icon(Icons.lock_clock_outlined),
+              title: const Text('Ход тренировки на экране блокировки'),
+              subtitle: const Text('Постоянное уведомление во время тренировки: следующий подход и отсчёт отдыха'),
+              value: ref.watch(workoutNotificationProvider),
+              onChanged: (v) => ref.read(workoutNotificationProvider.notifier).toggle(v),
+            ),
             SwitchListTile(
               secondary: const Icon(Icons.monitor_heart_outlined),
               title: const Text('Предупреждать о перетренированности'),

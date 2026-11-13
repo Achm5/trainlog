@@ -4,10 +4,10 @@ import 'package:material_ui/material_ui.dart';
 
 import 'features/analytics/analytics_screen.dart';
 import 'features/data/data_screen.dart';
-import 'features/data/error_log_screen.dart';
 import 'features/data/lock_gate.dart';
 import 'features/journal/session_screen.dart';
 import 'features/motion.dart';
+import 'features/journal/plate_calculator.dart';
 import 'features/journal/today_screen.dart';
 import 'features/nutrition/nutrition_screen.dart';
 import 'features/nutrition/profile_screen.dart';
@@ -41,7 +41,6 @@ final appRouter = GoRouter(
     GoRoute(path: '/rules', builder: (c, s) => const RulesScreen()),
     GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
     GoRoute(path: '/data', builder: (c, s) => const DataScreen()),
-    GoRoute(path: '/errors', builder: (c, s) => const ErrorLogScreen()),
     GoRoute(
       path: '/section/:sid',
       builder: (c, s) => navSections.firstWhere((t) => t.id == s.pathParameters['sid'], orElse: () => navSections.first).screen,
@@ -226,6 +225,16 @@ class MoreScreen extends ConsumerWidget {
           title: const Text('Правила'),
           subtitle: const Text('Пороги, приоритеты и паузы движка рекомендаций'),
           onTap: () => context.push('/rules'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.calculate_outlined),
+          title: const Text('Калькулятор блинов'),
+          subtitle: const Text('Какие диски повесить на гриф под нужный вес'),
+          onTap: () => showPlateCalculator(
+            context,
+            weightKg: 100,
+            step: ref.read(settingsProvider).value?.weightRoundingKg ?? 2.5,
+          ),
         ),
         ListTile(
           leading: const Icon(Icons.backup_outlined),

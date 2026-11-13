@@ -56,3 +56,6 @@ const stateOvertrainingWarning = 'overtraining_warning';
 
 /// Неделя, предупреждение по которой скрыто пользователем.
 const stateOvertrainingDismissed = 'overtraining_dismissed_week';
+
+/// Уведомление о ходе тренировки на экране блокировки: '0' — выключено (по умолчанию включено).
+const stateWorkoutNotification = 'workout_notification';

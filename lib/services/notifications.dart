@@ -7,6 +7,7 @@ class NotificationService {
   static final instance = NotificationService._();
 
   static const _restId = 1;
+  static const _workoutId = 2;
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _ready = false;
 
@@ -52,6 +53,45 @@ class NotificationService {
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
+    } catch (_) {}
+  }
+
+  /// Постоянное уведомление о ходе тренировки: видно на экране блокировки.
+  /// При [restEnd] показывает обратный отсчёт отдыха.
+  Future<void> showWorkout({required String title, required String body, DateTime? restEnd}) async {
+    if (!_ready) return;
+    try {
+      await _plugin.show(
+        id: _workoutId,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            'workout_progress',
+            'Ход тренировки',
+            channelDescription: 'Следующий подход и таймер отдыха на экране блокировки',
+            importance: Importance.low,
+            priority: Priority.low,
+            ongoing: true,
+            autoCancel: false,
+            onlyAlertOnce: true,
+            playSound: false,
+            enableVibration: false,
+            visibility: NotificationVisibility.public,
+            showWhen: restEnd != null,
+            when: restEnd?.millisecondsSinceEpoch,
+            usesChronometer: restEnd != null,
+            chronometerCountDown: restEnd != null,
+          ),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> cancelWorkout() async {
+    if (!_ready) return;
+    try {
+      await _plugin.cancel(id: _workoutId);
     } catch (_) {}
   }
 

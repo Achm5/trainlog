@@ -154,3 +154,19 @@ final overtrainingProvider = FutureProvider<OvertrainingCheck?>((ref) async {
   final dismissed = await ref.read(appStateProvider).get(stateOvertrainingDismissed);
   return dismissed == check.weekStart ? null : check;
 });
+
+/// Тумблер «Ход тренировки на экране блокировки».
+class WorkoutNotificationEnabled extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(initialWorkoutNotificationProvider);
+
+  Future<void> toggle(bool on) async {
+    state = on;
+    if (!on) await NotificationService.instance.cancelWorkout();
+    await ref.read(appStateProvider).set(stateWorkoutNotification, on ? '1' : '0');
+  }
+}
+
+final initialWorkoutNotificationProvider = Provider<bool>((ref) => true);
+final workoutNotificationProvider =
+    NotifierProvider<WorkoutNotificationEnabled, bool>(WorkoutNotificationEnabled.new);

@@ -143,3 +143,42 @@ String setsSummary(Iterable<SetBrief> sets) {
     for (final (w, reps) in groups) w == null || w == 0 ? reps.join(', ') : '${_w(w)} × ${reps.join(', ')}',
   ].join(' · ');
 }
+
+/// Подход для подсказки «что дальше»: у невыполненного — плановые вес и повторы.
+typedef PendingSet = ({bool isWarmup, bool closed, double? weightKg, int? reps});
+
+/// Следующий невыполненный рабочий подход тренировки.
+class NextSet {
+  const NextSet({
+    required this.exercise,
+    required this.setNo,
+    required this.setsTotal,
+    required this.weightKg,
+    required this.reps,
+  });
+  final String exercise;
+
+  /// Номер рабочего подхода в упражнении, с единицы.
+  final int setNo;
+  final int setsTotal;
+  final double? weightKg;
+  final int? reps;
+}
+
+/// Первый по порядку невыполненный рабочий подход; null — все подходы закрыты (или их нет).
+NextSet? nextSet(Iterable<({String name, List<PendingSet> sets})> exercises) {
+  for (final e in exercises) {
+    final work = [for (final s in e.sets) if (!s.isWarmup) s];
+    for (var i = 0; i < work.length; i++) {
+      if (work[i].closed) continue;
+      return NextSet(
+        exercise: e.name,
+        setNo: i + 1,
+        setsTotal: work.length,
+        weightKg: work[i].weightKg,
+        reps: work[i].reps,
+      );
+    }
+  }
+  return null;
+}

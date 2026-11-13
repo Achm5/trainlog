@@ -27,4 +27,21 @@ void main() {
     expect(setsSummary([s(0, 12), s(0, 10)]), '12, 10');
     expect(setsSummary([s(null, null, skipped: true)]), '');
   });
+
+  test('следующий подход: первый невыполненный рабочий по порядку упражнений', () {
+    PendingSet p(bool closed, {double? w, int? r, bool warmup = false}) =>
+        (isWarmup: warmup, closed: closed, weightKg: w, reps: r);
+    final list = [
+      (name: 'Жим лёжа', sets: [p(false, warmup: true), p(true, w: 100, r: 8), p(true, w: 100, r: 8)]),
+      (name: 'Присед', sets: [p(true, w: 120, r: 5), p(false, w: 120, r: 5), p(false, w: 120, r: 5)]),
+    ];
+    final n = nextSet(list)!;
+    expect(n.exercise, 'Присед');
+    expect(n.setNo, 2);
+    expect(n.setsTotal, 3);
+    expect(n.weightKg, 120);
+    expect(n.reps, 5);
+    expect(nextSet([(name: 'Жим', sets: [p(true)])]), isNull);
+    expect(nextSet(const []), isNull);
+  });
 }
