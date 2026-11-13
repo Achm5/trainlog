@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/analytics_repo.dart';
 import '../../data/database.dart';
 import '../../domain/dates.dart';
+import 'package:trainlog/i18n.dart';
 
 const colorGood = Color(0xFF2E9E4F);
 const colorWarn = Color(0xFFE0A800);
@@ -224,7 +225,7 @@ class WeightChart extends StatelessWidget {
     double x(String d) => daysBetween(origin, parseYmd(d)).toDouble();
     var minY = double.infinity, maxY = 0.0;
     for (final l in logs) {
-      for (final v in [l.weightKg, l.trendKg ?? l.weightKg]) {
+      for (final v in [weightToDisplay(l.weightKg), weightToDisplay(l.trendKg ?? l.weightKg)]) {
         if (v < minY) minY = v;
         if (v > maxY) maxY = v;
       }
@@ -269,13 +270,13 @@ class WeightChart extends StatelessWidget {
         ),
         lineBarsData: [
           LineChartBarData(
-            spots: [for (final l in logs) FlSpot(x(l.date), l.weightKg)],
+            spots: [for (final l in logs) FlSpot(x(l.date), weightToDisplay(l.weightKg))],
             color: scheme.outline,
             barWidth: 0,
             dotData: const FlDotData(show: true),
           ),
           LineChartBarData(
-            spots: [for (final l in logs) if (l.trendKg != null) FlSpot(x(l.date), l.trendKg!)],
+            spots: [for (final l in logs) if (l.trendKg != null) FlSpot(x(l.date), weightToDisplay(l.trendKg!))],
             color: scheme.primary,
             barWidth: 3,
             isCurved: true,

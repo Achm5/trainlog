@@ -4,9 +4,13 @@ import 'package:material_ui/material_ui.dart';
 import '../../domain/planning.dart';
 import '../../domain/plates.dart';
 import '../../providers.dart';
+import 'package:trainlog/i18n.dart';
 
 const statePlateBarKg = 'plate_bar_kg';
-const _bars = [20.0, 15.0, 10.0];
+const statePlateBarLb = 'plate_bar_lb';
+const _barsKg = [20.0, 15.0, 10.0];
+const _barsLb = [45.0, 35.0, 15.0];
+const _platesLb = [45.0, 35.0, 25.0, 10.0, 5.0, 2.5];
 
 Color _plateColor(double kg) => switch (kg) {
       >= 25 => const Color(0xFFD64545),
@@ -36,21 +40,26 @@ class _PlateCalculator extends ConsumerStatefulWidget {
 }
 
 class _PlateCalculatorState extends ConsumerState<_PlateCalculator> {
-  late double _weight = widget.weightKg;
-  double _bar = 20;
+  // Калькулятор считает в единицах показа: килограммы или фунты.
+  final bool _lb = I18n.pounds;
+  late final List<double> _bars = _lb ? _barsLb : _barsKg;
+  late final List<double> _plates = _lb ? _platesLb : defaultPlates;
+  late final String _barKey = _lb ? statePlateBarLb : statePlateBarKg;
+  late double _weight = _lb ? (weightToDisplay(widget.weightKg) / 5).round() * 5.0 : widget.weightKg;
+  late double _bar = _bars.first;
 
   @override
   void initState() {
     super.initState();
     () async {
-      final saved = double.tryParse(await ref.read(appStateProvider).get(statePlateBarKg) ?? '');
+      final saved = double.tryParse(await ref.read(appStateProvider).get(_barKey) ?? '');
       if (saved != null && _bars.contains(saved) && mounted) setState(() => _bar = saved);
     }();
   }
 
   void _setBar(double v) {
     setState(() => _bar = v);
-    ref.read(appStateProvider).set(statePlateBarKg, v.toString());
+    ref.read(appStateProvider).set(_barKey, v.toString());
   }
 
   void _shift(double delta) => setState(() => _weight = (_weight + delta).clamp(0, 1000).toDouble());
@@ -59,8 +68,8 @@ class _PlateCalculatorState extends ConsumerState<_PlateCalculator> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final load = platesFor(targetKg: _weight, barKg: _bar);
-    final step = widget.step <= 0 ? 2.5 : widget.step;
+    final load = platesFor(targetKg: _weight, barKg: _bar, plates: _plates);
+    final step = _lb ? 5.0 : (widget.step <= 0 ? 2.5 : widget.step);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -68,13 +77,13 @@ class _PlateCalculatorState extends ConsumerState<_PlateCalculator> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Блины на штангу', style: t.titleLarge),
+            Text(tr('Блины на штангу'), style: t.titleLarge),
             const SizedBox(height: 12),
             Row(
               children: [
                 IconButton.filledTonal(onPressed: () => _shift(-step), icon: const Icon(Icons.remove)),
                 Expanded(
-                  child: Text('${formatKg(_weight)} кг', textAlign: TextAlign.center, style: t.headlineMedium),
+                  child: Text(tr('{0} кг', [formatNum(_weight)]), textAlign: TextAlign.center, style: t.headlineMedium),
                 ),
                 IconButton.filledTonal(onPressed: () => _shift(step), icon: const Icon(Icons.add)),
               ],
@@ -82,13 +91,13 @@ class _PlateCalculatorState extends ConsumerState<_PlateCalculator> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Text('Гриф', style: t.bodyMedium),
+                Text(tr('Гриф'), style: t.bodyMedium),
                 const SizedBox(width: 12),
                 for (final b in _bars)
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
-                      label: Text('${formatKg(b)} кг'),
+                      label: Text(tr('{0} кг', [formatNum(b)])),
                       selected: _bar == b,
                       onSelected: (_) => _setBar(b),
                     ),
@@ -97,9 +106,9 @@ class _PlateCalculatorState extends ConsumerState<_PlateCalculator> {
             ),
             const SizedBox(height: 16),
             if (load == null)
-              Text('Вес меньше грифа (${formatKg(_bar)} кг).', style: t.bodyLarge)
+              Text(tr('Вес меньше грифа ({0} кг).', [formatNum(_bar)]), style: t.bodyLarge)
             else ...[
-              Text('На каждую сторону', style: t.bodySmall),
+              Text(tr('На каждую сторону'), style: t.bodySmall),
               const SizedBox(height: 4),
               Text(platesLabel(load), style: t.headlineSmall),
               const SizedBox(height: 12),
@@ -110,7 +119,7 @@ class _PlateCalculatorState extends ConsumerState<_PlateCalculator> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(width: 36, height: 10, color: scheme.outline),
-                    for (final kg in platesSequence(load).take(12))
+                    for (final kg in platesSequence(load).take(12).map((v) => _lb ? v * kgPerLb : v))
                       Container(
                         width: kg >= 10 ? 16 : 11,
                         height: 30 + kg.clamp(1.25, 25).toDouble() / 25 * 54,
@@ -128,14 +137,14 @@ class _PlateCalculatorState extends ConsumerState<_PlateCalculator> {
               if (!load.exact) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Стандартными дисками точно не набрать: получится ${formatKg(load.achievedKg)} кг, '
-                  'не хватает ${formatKg(load.remainderKg)} кг на сторону.',
+                  tr('Стандартными дисками точно не набрать: получится {0} кг, '
+                  'не хватает {1} кг на сторону.', [formatNum(load.achievedKg), formatNum(load.remainderKg)]),
                   style: t.bodyMedium?.copyWith(color: scheme.error),
                 ),
               ],
             ],
             const SizedBox(height: 8),
-            Text('Диски: 25, 20, 15, 10, 5, 2,5 и 1,25 кг.', style: t.bodySmall),
+            Text(tr('Диски: {0} кг.', [_plates.map(formatNum).join(', ')]), style: t.bodySmall),
           ],
         ),
       ),

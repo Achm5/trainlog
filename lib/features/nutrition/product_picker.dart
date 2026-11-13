@@ -10,6 +10,7 @@ import '../../services/off_client.dart';
 import '../common.dart';
 import 'product_edit.dart';
 import 'recipe_edit.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Выбор продукта для записи в дневник: избранное и недавние, свои продукты,
 /// поиск в Open Food Facts по названию и штрихкоду.
@@ -45,11 +46,11 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
   }
 
   Future<void> _add(Product p) async {
-    final grams = await askNumber(context, '${p.name}: сколько граммов?', initial: 100, suffix: 'г');
+    final grams = await askNumber(context, tr('{0}: сколько граммов?', [p.name]), initial: 100, suffix: tr('г'));
     if (grams == null || grams <= 0) return;
     await ref.read(nutritionRepoProvider).addFood(date: widget.day, meal: widget.meal, product: p, grams: grams);
     if (mounted) {
-      toast(context, 'Добавлено: ${p.name}, ${grams.round()} г');
+      toast(context, tr('Добавлено: {0}, {1} г', [p.name, grams.round()]));
       Navigator.of(context).pop();
     }
   }
@@ -63,7 +64,7 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
 
   Future<void> _searchOff() async {
     final q = _query.trim();
-    if (q.length < 2) return toast(context, 'Введите название продукта');
+    if (q.length < 2) return toast(context, tr('Введите название продукта'));
     setState(() {
       _offLoading = true;
       _offError = null;
@@ -96,8 +97,8 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
         return;
       }
       toast(context, r.found
-          ? 'В карточке Open Food Facts нет калорий — заполните продукт вручную'
-          : 'Штрихкод $code не найден — добавьте продукт вручную');
+          ? tr('В карточке Open Food Facts нет калорий — заполните продукт вручную')
+          : tr('Штрихкод {0} не найден — добавьте продукт вручную', [code]));
       await _createManual(barcode: code);
     } on OffException catch (e) {
       if (!mounted) return;
@@ -118,7 +119,7 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
         dense: true,
         leading: Icon(p.isFavorite ? Icons.star : (p.source == 'recipe' ? Icons.restaurant_menu : Icons.fastfood_outlined)),
         title: Text(p.brand == null ? p.name : '${p.name} · ${p.brand}'),
-        subtitle: Text('${p.kcal100g.round()} ккал · Б ${p.protein100g.round()} Ж ${p.fat100g.round()} У ${p.carbs100g.round()} на 100 г'),
+        subtitle: Text(tr('{0} ккал · Б {1} Ж {2} У {3} на 100 г', [p.kcal100g.round(), p.protein100g.round(), p.fat100g.round(), p.carbs100g.round()])),
         trailing: IconButton(
           icon: const Icon(Icons.info_outline),
           onPressed: () => Navigator.of(context).push(MaterialPageRoute<int>(
@@ -135,10 +136,10 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
       appBar: AppBar(
         title: Text('${mealLabels[widget.meal]} · ${ruDate(widget.day)}'),
         actions: [
-          IconButton(tooltip: 'Сканировать штрихкод', icon: const Icon(Icons.qr_code_scanner), onPressed: _scan),
-          IconButton(tooltip: 'Новый продукт вручную', icon: const Icon(Icons.add), onPressed: _createManual),
+          IconButton(tooltip: tr('Сканировать штрихкод'), icon: const Icon(Icons.qr_code_scanner), onPressed: _scan),
+          IconButton(tooltip: tr('Новый продукт вручную'), icon: const Icon(Icons.add), onPressed: _createManual),
           IconButton(
-            tooltip: 'Новый рецепт',
+            tooltip: tr('Новый рецепт'),
             icon: const Icon(Icons.restaurant_menu),
             onPressed: () async {
               final id = await Navigator.of(context).push<int>(MaterialPageRoute(builder: (_) => const RecipeEditScreen()));
@@ -157,28 +158,28 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
             child: TextField(
               controller: _search,
               textInputAction: TextInputAction.search,
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Название продукта', isDense: true),
+              decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: tr('Название продукта'), isDense: true),
               onChanged: (v) => setState(() => _query = v),
               onSubmitted: (_) => _searchOff(),
             ),
           ),
           if (_query.isEmpty && _recent.isNotEmpty) ...[
-            Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Text('Недавние', style: t.titleSmall)),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Text(tr('Недавние'), style: t.titleSmall)),
             for (final p in _recent.take(8)) _tile(p),
           ],
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Text(_query.isEmpty ? 'Избранное и сохранённые' : 'Сохранённые продукты', style: t.titleSmall),
+            child: Text(_query.isEmpty ? tr('Избранное и сохранённые') : tr('Сохранённые продукты'), style: t.titleSmall),
           ),
           if (products.isEmpty)
-            const Padding(padding: EdgeInsets.all(16), child: Text('Сохранённых продуктов не найдено')),
+            Padding(padding: EdgeInsets.all(16), child: Text(tr('Сохранённых продуктов не найдено'))),
           for (final p in products) _tile(p),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
             child: FilledButton.tonalIcon(
               onPressed: _offLoading ? null : _searchOff,
               icon: const Icon(Icons.public),
-              label: Text(_offLoading ? 'Ищу…' : 'Искать в Open Food Facts'),
+              label: Text(_offLoading ? tr('Ищу…') : tr('Искать в Open Food Facts')),
             ),
           ),
           if (_offError != null)
@@ -187,22 +188,22 @@ class _ProductPickerScreenState extends ConsumerState<ProductPickerScreen> {
               child: Text(_offError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
           if (_offResults != null && _offResults!.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16),
-              child: Text('Ничего не найдено (карточки без калорий не показываются). Добавьте продукт вручную.'),
+              child: Text(tr('Ничего не найдено (карточки без калорий не показываются). Добавьте продукт вручную.')),
             ),
           for (final p in _offResults ?? const <OffProduct>[])
             ListTile(
               dense: true,
               leading: const Icon(Icons.public),
               title: Text(p.brand == null ? p.name : '${p.name} · ${p.brand}'),
-              subtitle: Text('${p.kcal100.round()} ккал · Б ${p.protein100.round()} Ж ${p.fat100.round()} У ${p.carbs100.round()} на 100 г'),
+              subtitle: Text(tr('{0} ккал · Б {1} Ж {2} У {3} на 100 г', [p.kcal100.round(), p.protein100.round(), p.fat100.round(), p.carbs100.round()])),
               onTap: () => _addOff(p),
             ),
           if (_offResults != null && _offResults!.isNotEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16),
-              child: Text('Данные: Open Food Facts (openfoodfacts.org), лицензия Open Database License (ODbL).'),
+              child: Text(tr('Данные: Open Food Facts (openfoodfacts.org), лицензия Open Database License (ODbL).')),
             ),
         ],
       ),
@@ -224,7 +225,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Наведите камеру на штрихкод')),
+      appBar: AppBar(title: Text(tr('Наведите камеру на штрихкод'))),
       body: MobileScanner(
         onDetect: (capture) {
           if (_done) return;

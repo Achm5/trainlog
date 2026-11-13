@@ -18,6 +18,7 @@ import '../motion.dart';
 import '../recommendations/recommendations.dart';
 import '../reference/exercises_screen.dart';
 import '../ruler_picker.dart';
+import 'package:trainlog/i18n.dart';
 
 const defaultRestSec = 120;
 
@@ -41,8 +42,8 @@ class SessionScreen extends ConsumerWidget {
       final list = ref.read(sessionExercisesProvider(sessionId)).value ?? const <SessionExerciseView>[];
       final pending = list.expand((e) => e.sets).where((s) => s.reps == null && s.status == null).length;
       if (pending > 0 &&
-          !await confirm(context, 'Завершить тренировку?',
-              message: 'Невыполненных подходов: $pending. Они будут отмечены как пропущенные.', ok: 'Завершить')) {
+          !await confirm(context, tr('Завершить тренировку?'),
+              message: tr('Невыполненных подходов: {0}. Они будут отмечены как пропущенные.', [pending]), ok: tr('Завершить'))) {
         return;
       }
       for (final s in list.expand((e) => e.sets).where((s) => s.reps == null && s.status == null)) {
@@ -56,19 +57,19 @@ class SessionScreen extends ConsumerWidget {
       if (!context.mounted) return;
       final done = await journal.session(sessionId);
       if (!context.mounted) return;
-      toast(context, 'Тренировка завершена · ${formatDuration(((done.finishedAt ?? 0) - done.startedAt) ~/ 1000)}');
+      toast(context, tr('Тренировка завершена · {0}', [formatDuration(((done.finishedAt ?? 0) - done.startedAt) ~/ 1000)]));
       Navigator.of(context).pop();
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${inProgress ? 'Тренировка' : 'Сессия'} · ${ruDate(parseYmd(session.date))}'),
+        title: Text('${inProgress ? tr('Тренировка') : tr('Сессия')} · ${ruDate(parseYmd(session.date))}'),
         actions: [
           IconButton(
-            tooltip: 'Заметка к тренировке',
+            tooltip: tr('Заметка к тренировке'),
             icon: Icon(session.note == null ? Icons.sticky_note_2_outlined : Icons.sticky_note_2),
             onPressed: () async {
-              final t = await askText(context, 'Заметка к тренировке', initial: session.note ?? '', maxLines: 4);
+              final t = await askText(context, tr('Заметка к тренировке'), initial: session.note ?? '', maxLines: 4);
               if (t != null) await journal.setSessionNote(sessionId, t);
             },
           ),
@@ -78,16 +79,16 @@ class SessionScreen extends ConsumerWidget {
                 final exId = await pickExercise(context);
                 if (exId != null) await journal.addExerciseToSession(sessionId, exId);
               } else if (v == 'delete') {
-                if (await confirm(context, 'Удалить тренировку?', message: 'Все подходы этой сессии будут удалены.')) {
+                if (await confirm(context, tr('Удалить тренировку?'), message: tr('Все подходы этой сессии будут удалены.'))) {
                   await journal.deleteSession(sessionId);
                   await NotificationService.instance.cancelWorkout();
                   if (context.mounted) Navigator.of(context).pop();
                 }
               }
             },
-            itemBuilder: (c) => const [
-              PopupMenuItem(value: 'add', child: Text('Добавить упражнение')),
-              PopupMenuItem(value: 'delete', child: Text('Удалить тренировку')),
+            itemBuilder: (c) => [
+              PopupMenuItem(value: 'add', child: Text(tr('Добавить упражнение'))),
+              PopupMenuItem(value: 'delete', child: Text(tr('Удалить тренировку'))),
             ],
           ),
         ],
@@ -112,7 +113,7 @@ class SessionScreen extends ConsumerWidget {
                   return Center(
                     child: FilledButton.tonalIcon(
                       icon: const Icon(Icons.add),
-                      label: const Text('Добавить упражнение'),
+                      label: Text(tr('Добавить упражнение')),
                       onPressed: () async {
                         final exId = await pickExercise(context);
                         if (exId != null) await journal.addExerciseToSession(sessionId, exId);
@@ -124,7 +125,7 @@ class SessionScreen extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
                   children: [
                     if (session.note != null)
-                      Padding(padding: const EdgeInsets.all(8), child: Text('Заметка: ${session.note}')),
+                      Padding(padding: const EdgeInsets.all(8), child: Text(tr('Заметка: {0}', [session.note]))),
                     for (final r in ref.watch(newRecommendationsProvider).value ?? const <RecommendationView>[])
                       if (list.any((e) => e.plan?.programDayExerciseId == r.rec.programDayExerciseId))
                         RecommendationCard(r),
@@ -147,7 +148,7 @@ class SessionScreen extends ConsumerWidget {
                 child: SizedBox(
                   width: double.infinity,
                   height: 52,
-                  child: FilledButton(onPressed: finish, child: const Text('Завершить тренировку')),
+                  child: FilledButton(onPressed: finish, child: Text(tr('Завершить тренировку'))),
                 ),
               ),
             ),
@@ -191,7 +192,7 @@ class _LockScreenStatusState extends ConsumerState<_LockScreenStatus> {
     final next = nextSet([
       for (final e in widget.exercises)
         (
-          name: e.exercise.name,
+          name: trName(e.exercise.name),
           sets: [
             for (final s in [...e.sets]..sort((a, b) => a.setNo.compareTo(b.setNo)))
               (
@@ -207,14 +208,14 @@ class _LockScreenStatusState extends ConsumerState<_LockScreenStatus> {
 
     final String title, body;
     if (next == null) {
-      title = 'Все подходы выполнены';
-      body = 'Откройте приложение, чтобы завершить тренировку';
+      title = tr('Все подходы выполнены');
+      body = tr('Откройте приложение, чтобы завершить тренировку');
     } else {
       final target = next.reps == null
           ? ''
-          : (next.weightKg == null ? '${next.reps} повт.' : '${formatKg(next.weightKg)} кг × ${next.reps}');
-      title = resting ? 'Отдых · дальше ${next.exercise}' : next.exercise;
-      body = ['Подход ${next.setNo} из ${next.setsTotal}', if (target.isNotEmpty) target].join(' · ');
+          : (next.weightKg == null ? tr('{0} повт.', [next.reps]) : tr('{0} кг × {1}', [formatKg(next.weightKg), next.reps]));
+      title = resting ? tr('Отдых · дальше {0}', [next.exercise]) : next.exercise;
+      body = [tr('Подход {0} из {1}', [next.setNo, next.setsTotal]), if (target.isNotEmpty) target].join(' · ');
     }
     final signature = '$title|$body|${restEnd?.millisecondsSinceEpoch ?? 0}';
     if (signature != _shown) {
@@ -269,7 +270,6 @@ class _SessionProgressBarState extends State<_SessionProgressBar> {
     final seconds = ((endMs - s.startedAt) ~/ 1000).clamp(0, 24 * 3600).toInt();
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final tons = p.tonnageKg / 1000;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Column(
@@ -277,7 +277,7 @@ class _SessionProgressBarState extends State<_SessionProgressBar> {
         children: [
           Row(
             children: [
-              Text('Подходы ${p.closed} из ${p.total}', style: t.titleSmall),
+              Text(tr('Подходы {0} из {1}', [p.closed, p.total]), style: t.titleSmall),
               const Spacer(),
               Icon(Icons.schedule, size: 16, color: scheme.onSurfaceVariant),
               const SizedBox(width: 4),
@@ -286,7 +286,7 @@ class _SessionProgressBarState extends State<_SessionProgressBar> {
                 const SizedBox(width: 12),
                 Icon(Icons.fitness_center, size: 16, color: scheme.onSurfaceVariant),
                 const SizedBox(width: 4),
-                Text('${tons.toStringAsFixed(1).replaceAll('.', ',')} т', style: t.bodyMedium),
+                Text(formatTonnage(p.tonnageKg), style: t.bodyMedium),
               ],
             ],
           ),
@@ -369,15 +369,15 @@ class _ExerciseCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(view.exercise.name, style: Theme.of(context).textTheme.titleMedium),
+                      Text(trName(view.exercise.name), style: Theme.of(context).textTheme.titleMedium),
                       if (plan != null)
                         Text(
-                          'План: ${plan.sets} × ${plan.repsMin}–${plan.repsMax} · ${formatKg(plan.weightKg)} кг · RIR ${plan.targetRir}',
+                          tr('План: {0} × {1}–{2} · {3} кг · RIR {4}', [plan.sets, plan.repsMin, plan.repsMax, formatKg(plan.weightKg), plan.targetRir]),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       if (view.previous case final prev?)
                         Text(
-                          'Прошлый раз (${ruDate(prev.date).substring(0, 5)}): ${prev.summary}',
+                          tr('Прошлый раз ({0}): {1}', [ruDate(prev.date).substring(0, 5), prev.summary]),
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -394,15 +394,15 @@ class _ExerciseCard extends ConsumerWidget {
                       case 'warmup':
                         await journal.addSet(view.se.id, warmup: true);
                       case 'remove':
-                        if (await confirm(context, 'Убрать упражнение из тренировки?')) {
+                        if (await confirm(context, tr('Убрать упражнение из тренировки?'))) {
                           await journal.removeSessionExercise(view.se.id);
                         }
                     }
                   },
-                  itemBuilder: (c) => const [
-                    PopupMenuItem(value: 'set', child: Text('Добавить подход')),
-                    PopupMenuItem(value: 'warmup', child: Text('Добавить разминочный подход')),
-                    PopupMenuItem(value: 'remove', child: Text('Убрать упражнение')),
+                  itemBuilder: (c) => [
+                    PopupMenuItem(value: 'set', child: Text(tr('Добавить подход'))),
+                    PopupMenuItem(value: 'warmup', child: Text(tr('Добавить разминочный подход'))),
+                    PopupMenuItem(value: 'remove', child: Text(tr('Убрать упражнение'))),
                   ],
                 ),
               ],
@@ -410,14 +410,14 @@ class _ExerciseCard extends ConsumerWidget {
             for (final s in sets)
               _SetRow(
                 set: s,
-                label: s.isWarmup ? 'Р' : '${++workNo}',
+                label: s.isWarmup ? tr('Р') : '${++workNo}',
                 isRecord: s.id == view.recordSetId,
                 targetRir: plan?.targetRir,
                 onPlanned: () async {
                   HapticFeedback.mediumImpact();
                   final record = await journal.completeAsPlanned(s.id, targetRir: plan?.targetRir);
                   startRest();
-                  if (record != null && context.mounted) showRecordCelebration(context, view.exercise.name, record);
+                  if (record != null && context.mounted) showRecordCelebration(context, trName(view.exercise.name), record);
                 },
                 onEdit: () async {
                   final saved = await showModalBottomSheet<SetSaveResult>(
@@ -429,7 +429,7 @@ class _ExerciseCard extends ConsumerWidget {
                   if (saved == null) return;
                   if (!saved.warmup) startRest();
                   if (saved.record != null && context.mounted) {
-                    showRecordCelebration(context, view.exercise.name, saved.record!);
+                    showRecordCelebration(context, trName(view.exercise.name), saved.record!);
                   }
                 },
               ),
@@ -476,13 +476,13 @@ class _SetRow extends StatelessWidget {
 
     final String main;
     if (done) {
-      main = '${formatKg(set.weightKg)} кг × ${set.reps}${set.rir != null ? ' · RIR ${set.rir}' : ''}';
+      main = tr('{0} кг × {1}{2}', [formatKg(set.weightKg), set.reps, set.rir != null ? ' · RIR ${set.rir}' : '']);
     } else if (skipped) {
-      main = 'Пропущен';
+      main = tr('Пропущен');
     } else if (hasPlan) {
-      main = '${formatKg(set.plannedWeightKg)} кг × ${set.plannedReps}';
+      main = tr('{0} кг × {1}', [formatKg(set.plannedWeightKg), set.plannedReps]);
     } else {
-      main = set.isWarmup ? 'Разминочный подход' : 'Подход без плана';
+      main = set.isWarmup ? tr('Разминочный подход') : tr('Подход без плана');
     }
 
     return InkWell(
@@ -527,10 +527,10 @@ class _SetRow extends StatelessWidget {
                   if (done && (status != null || set.weightReduced || set.note != null || set.isWarmup || isRecord))
                     Text(
                       [
-                        if (isRecord) 'рекорд 1ПМ ${formatKg((set.e1rmKg! * 10).round() / 10)} кг',
-                        if (set.isWarmup) 'разминка',
+                        if (isRecord) tr('рекорд 1ПМ {0} кг', [formatKg((set.e1rmKg! * 10).round() / 10)]),
+                        if (set.isWarmup) tr('разминка'),
                         if (status != null) status.label.toLowerCase(),
-                        if (set.weightReduced) 'вес снижен',
+                        if (set.weightReduced) tr('вес снижен'),
                         if (set.note != null) set.note!,
                       ].join(' · '),
                       style: t.bodySmall,
@@ -544,11 +544,11 @@ class _SetRow extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onPlanned,
                   icon: const Icon(Icons.check),
-                  label: const Text('По плану'),
+                  label: Text(tr('По плану')),
                 ),
               )
             else if (!done && !skipped)
-              SizedBox(height: 48, child: FilledButton.tonal(onPressed: onEdit, child: const Text('Ввести')))
+              SizedBox(height: 48, child: FilledButton.tonal(onPressed: onEdit, child: Text(tr('Ввести'))))
             else ...[
               AnimatedScale(
                 scale: isRecord ? 1 : 0,
@@ -634,15 +634,15 @@ class _SetEditorState extends ConsumerState<SetEditor> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (s.plannedReps != null)
-              Text('План: ${formatKg(s.plannedWeightKg)} кг × ${s.plannedReps}', style: Theme.of(context).textTheme.bodyMedium),
+              Text(tr('План: {0} кг × {1}', [formatKg(s.plannedWeightKg), s.plannedReps]), style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 8),
             _Stepper(
-              label: 'Вес, кг',
+              label: tr('Вес, кг'),
               value: formatKg(_weight),
               onMinus: () => setState(() => _weight = (_weight - widget.step).clamp(0, 1000).toDouble()),
               onPlus: () => setState(() => _weight = (_weight + widget.step).clamp(0, 1000).toDouble()),
               onTapValue: () async {
-                final v = await askNumber(context, 'Вес, кг', initial: _weight);
+                final v = await askWeight(context, tr('Вес, кг'), initialKg: _weight);
                 if (v != null && v >= 0) setState(() => _weight = v);
               },
             ),
@@ -656,12 +656,12 @@ class _SetEditorState extends ConsumerState<SetEditor> {
             ),
             const SizedBox(height: 8),
             _Stepper(
-              label: 'Повторы',
+              label: tr('Повторы'),
               value: '$_reps',
               onMinus: () => setState(() => _reps = (_reps - 1).clamp(0, 100)),
               onPlus: () => setState(() => _reps = (_reps + 1).clamp(0, 100)),
               onTapValue: () async {
-                final v = await askNumber(context, 'Повторы', initial: _reps.toDouble(), integer: true);
+                final v = await askNumber(context, tr('Повторы'), initial: _reps.toDouble(), integer: true);
                 if (v != null && v >= 0) setState(() => _reps = v.round());
               },
             ),
@@ -675,7 +675,7 @@ class _SetEditorState extends ConsumerState<SetEditor> {
             ),
             const SizedBox(height: 8),
             if (!_warmup) ...[
-              Align(alignment: Alignment.centerLeft, child: Text('RIR — повторов в запасе', style: Theme.of(context).textTheme.labelLarge)),
+              Align(alignment: Alignment.centerLeft, child: Text(tr('RIR — повторов в запасе'), style: Theme.of(context).textTheme.labelLarge)),
               const SizedBox(height: 4),
               Row(
                 children: [
@@ -696,17 +696,17 @@ class _SetEditorState extends ConsumerState<SetEditor> {
             ],
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Разминочный подход'),
-              subtitle: const Text('Не идёт в аналитику'),
+              title: Text(tr('Разминочный подход')),
+              subtitle: Text(tr('Не идёт в аналитику')),
               value: _warmup,
               onChanged: (v) => setState(() => _warmup = v),
             ),
-            TextField(controller: _note, decoration: const InputDecoration(labelText: 'Заметка к подходу', isDense: true)),
+            TextField(controller: _note, decoration: InputDecoration(labelText: tr('Заметка к подходу'), isDense: true)),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 56,
-              child: FilledButton(onPressed: _save, child: const Text('Сохранить подход')),
+              child: FilledButton(onPressed: _save, child: Text(tr('Сохранить подход'))),
             ),
             const SizedBox(height: 4),
             Row(
@@ -717,7 +717,7 @@ class _SetEditorState extends ConsumerState<SetEditor> {
                     await journal.skipSet(s.id);
                     if (context.mounted) Navigator.of(context).pop();
                   },
-                  child: const Text('Пропустить'),
+                  child: Text(tr('Пропустить')),
                 ),
                 if (s.reps != null || s.status != null)
                   TextButton(
@@ -725,14 +725,14 @@ class _SetEditorState extends ConsumerState<SetEditor> {
                       await journal.resetSet(s.id);
                       if (context.mounted) Navigator.of(context).pop();
                     },
-                    child: const Text('Сбросить'),
+                    child: Text(tr('Сбросить')),
                   ),
                 TextButton(
                   onPressed: () async {
                     await journal.deleteSet(s.id);
                     if (context.mounted) Navigator.of(context).pop();
                   },
-                  child: const Text('Удалить подход'),
+                  child: Text(tr('Удалить подход')),
                 ),
               ],
             ),
@@ -848,17 +848,17 @@ class _RestTimerBarState extends ConsumerState<RestTimerBar> {
             Expanded(
               child: Text(
                 over
-                    ? 'Отдых окончен'
-                    : 'Отдых: ${shown ~/ 60}:${(shown % 60).toString().padLeft(2, '0')}',
+                    ? tr('Отдых окончен')
+                    : tr('Отдых: {0}:{1}', [shown ~/ 60, (shown % 60).toString().padLeft(2, '0')]),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
             if (!over)
               TextButton(
                 onPressed: () => ref.read(restTimerProvider.notifier).start(left + 30),
-                child: const Text('+30 с'),
+                child: Text(tr('+30 с')),
               ),
-            TextButton(onPressed: () => ref.read(restTimerProvider.notifier).stop(), child: Text(over ? 'Закрыть' : 'Стоп')),
+            TextButton(onPressed: () => ref.read(restTimerProvider.notifier).stop(), child: Text(over ? tr('Закрыть') : tr('Стоп'))),
           ],
         ),
       ),

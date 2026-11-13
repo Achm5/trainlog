@@ -10,8 +10,9 @@ import '../../domain/dates.dart';
 import '../../domain/program_templates.dart';
 import '../../providers.dart';
 import '../common.dart';
+import 'package:trainlog/i18n.dart';
 
-const programStatusLabels = {'draft': 'Черновик', 'active': 'Активная', 'archived': 'Архив'};
+Map<String, String> get programStatusLabels => {'draft': tr('Черновик'), 'active': tr('Активная'), 'archived': tr('Архив')};
 
 /// Выбор готовой программы: создаёт черновик, в котором остаётся задать веса.
 Future<void> pickProgramTemplate(BuildContext context, WidgetRef ref) async {
@@ -24,16 +25,16 @@ Future<void> pickProgramTemplate(BuildContext context, WidgetRef ref) async {
         shrinkWrap: true,
         padding: const EdgeInsets.only(bottom: 16),
         children: [
-          const ListTile(
-            title: Text('Готовые программы', style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('Создаётся черновик: упражнения, подходы и повторы уже расставлены, '
-                'последняя неделя — разгрузка. Веса и дни недели можно поменять.'),
+          ListTile(
+            title: Text(tr('Готовые программы'), style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(tr('Создаётся черновик: упражнения, подходы и повторы уже расставлены, '
+                'последняя неделя — разгрузка. Веса и дни недели можно поменять.')),
           ),
           for (final t in programTemplates)
             ListTile(
               leading: const Icon(Icons.auto_awesome_motion_outlined),
-              title: Text(t.name),
-              subtitle: Text('${t.description}\n${t.weeks} нед. · ${t.exercisesCount} упражнений'),
+              title: Text(trName(t.name)),
+              subtitle: Text(tr('{0}\n{1} нед. · {2} упражнений', [trName(t.description), t.weeks, t.exercisesCount])),
               isThreeLine: true,
               onTap: () => Navigator.pop(c, t),
             ),
@@ -45,11 +46,11 @@ Future<void> pickProgramTemplate(BuildContext context, WidgetRef ref) async {
   try {
     final id = await ref.read(plannerRepoProvider).createFromTemplate(template, startDate: nearestMonday(today()));
     if (context.mounted) {
-      toast(context, 'Черновик создан. Задайте веса и сделайте программу активной.');
+      toast(context, tr('Черновик создан. Задайте веса и сделайте программу активной.'));
       context.push('/program/$id');
     }
   } catch (e) {
-    if (context.mounted) toast(context, 'Не удалось создать программу: $e');
+    if (context.mounted) toast(context, tr('Не удалось создать программу: {0}', [e]));
   }
 }
 
@@ -61,15 +62,15 @@ class ProgramsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Программы'),
+        title: Text(tr('Программы')),
         actions: [
           IconButton(
-            tooltip: 'Готовые программы',
+            tooltip: tr('Готовые программы'),
             icon: const Icon(Icons.auto_awesome_motion_outlined),
             onPressed: () => pickProgramTemplate(context, ref),
           ),
           IconButton(
-            tooltip: 'Импорт программы из CSV',
+            tooltip: tr('Импорт программы из CSV'),
             icon: const Icon(Icons.upload_file),
             onPressed: () async {
               try {
@@ -81,13 +82,13 @@ class ProgramsScreen extends ConsumerWidget {
                     .read(plannerRepoProvider)
                     .importProgramCsv(csv, startDate: nearestMonday(today()));
                 if (context.mounted) {
-                  toast(context, 'Программа импортирована как черновик');
+                  toast(context, tr('Программа импортирована как черновик'));
                   context.push('/program/$id');
                 }
               } on FormatException catch (e) {
-                if (context.mounted) toast(context, 'Не удалось импортировать: ${e.message}');
+                if (context.mounted) toast(context, tr('Не удалось импортировать: {0}', [e.message]));
               } catch (e) {
-                if (context.mounted) toast(context, 'Не удалось импортировать: $e');
+                if (context.mounted) toast(context, tr('Не удалось импортировать: {0}', [e]));
               }
             },
           ),
@@ -96,7 +97,7 @@ class ProgramsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/program/new'),
         icon: const Icon(Icons.add),
-        label: const Text('Программа'),
+        label: Text(tr('Программа')),
       ),
       body: AsyncView(
         value: ref.watch(programsProvider),
@@ -108,12 +109,12 @@ class ProgramsScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('Программ пока нет. Возьмите готовую и поправьте под себя или соберите мезоцикл '
-                        'с нуля: дни недели, упражнения и прогрессию по неделям.', textAlign: TextAlign.center),
+                    Text(tr('Программ пока нет. Возьмите готовую и поправьте под себя или соберите мезоцикл '
+                        'с нуля: дни недели, упражнения и прогрессию по неделям.'), textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       icon: const Icon(Icons.auto_awesome_motion_outlined),
-                      label: const Text('Готовые программы'),
+                      label: Text(tr('Готовые программы')),
                       onPressed: () => pickProgramTemplate(context, ref),
                     ),
                   ],
@@ -130,7 +131,7 @@ class ProgramsScreen extends ConsumerWidget {
                       color: p.status == 'active' ? Theme.of(context).colorScheme.primary : null),
                   title: Text(p.name),
                   subtitle: Text(
-                      '${programStatusLabels[p.status]} · ${p.weeksCount} нед. · с ${ruDate(parseYmd(p.startDate))}'),
+                      tr('{0} · {1} нед. · с {2}', [programStatusLabels[p.status], p.weeksCount, ruDate(parseYmd(p.startDate))])),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/program/${p.id}'),
                 ),

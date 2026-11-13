@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../domain/strength.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Отрисовка AsyncValue с единым видом загрузки и ошибки.
 class AsyncView<T> extends StatelessWidget {
@@ -15,7 +16,7 @@ class AsyncView<T> extends StatelessWidget {
     return value.when(
       data: builder,
       loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
-      error: (e, _) => Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('Ошибка: $e'))),
+      error: (e, _) => Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(tr('Ошибка: {0}', [e])))),
     );
   }
 }
@@ -59,25 +60,32 @@ double? parseNum(String s) => double.tryParse(s.trim().replaceAll(',', '.'));
 final decimalInput = <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))];
 final intInput = <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly];
 
-Future<bool> confirm(BuildContext context, String title, {String? message, String ok = 'Да'}) async {
+Future<bool> confirm(BuildContext context, String title, {String? message, String? ok}) async {
   final r = await showDialog<bool>(
     context: context,
     builder: (c) => AlertDialog(
       title: Text(title),
       content: message == null ? null : Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Отмена')),
-        FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(ok)),
+        TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr('Отмена'))),
+        FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(ok ?? tr('Да'))),
       ],
     ),
   );
   return r ?? false;
 }
 
+/// Ввод веса в текущих единицах (кг или фунты). Возвращает килограммы.
+Future<double?> askWeight(BuildContext context, String title, {double? initialKg}) async {
+  final shown = initialKg == null ? null : (weightToDisplay(initialKg) * 100).round() / 100;
+  final v = await askNumber(context, title, initial: shown);
+  return v == null ? null : weightFromDisplay(v);
+}
+
 /// Диалог ввода числа. Возвращает null при отмене.
 Future<double?> askNumber(BuildContext context, String title, {double? initial, bool integer = false, String? suffix}) {
   final c = TextEditingController(
-      text: initial == null ? '' : (integer ? initial.round().toString() : initial.toString().replaceAll('.', ',')));
+      text: initial == null ? '' : (integer ? initial.round().toString() : initial.toString().replaceAll('.', decSep)));
   return showDialog<double>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -91,8 +99,8 @@ Future<double?> askNumber(BuildContext context, String title, {double? initial, 
         onSubmitted: (v) => Navigator.pop(ctx, parseNum(v)),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, parseNum(c.text)), child: const Text('Сохранить')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Отмена'))),
+        FilledButton(onPressed: () => Navigator.pop(ctx, parseNum(c.text)), child: Text(tr('Сохранить'))),
       ],
     ),
   );
@@ -106,8 +114,8 @@ Future<String?> askText(BuildContext context, String title, {String initial = ''
       title: Text(title),
       content: TextField(controller: c, autofocus: true, maxLines: maxLines),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Сохранить')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Отмена'))),
+        FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: Text(tr('Сохранить'))),
       ],
     ),
   );
@@ -121,6 +129,6 @@ void toast(BuildContext context, String text) {
 
 String formatDuration(int seconds) {
   final m = seconds ~/ 60;
-  if (m < 60) return '$m мин';
-  return '${m ~/ 60} ч ${m % 60} мин';
+  if (m < 60) return tr('{0} мин', [m]);
+  return tr('{0} ч {1} мин', [m ~/ 60, m % 60]);
 }

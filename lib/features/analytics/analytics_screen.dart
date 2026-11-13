@@ -9,6 +9,7 @@ import '../../providers.dart';
 import '../../data/database.dart';
 import 'analytics_charts.dart';
 import '../report/report_actions.dart';
+import 'package:trainlog/i18n.dart';
 
 enum AnalyticsPeriod {
   cycle('Мезоцикл'),
@@ -17,8 +18,9 @@ enum AnalyticsPeriod {
   m12('12 мес'),
   all('Всё время');
 
-  const AnalyticsPeriod(this.label);
-  final String label;
+  const AnalyticsPeriod(this._label);
+  final String _label;
+  String get label => tr(_label);
 }
 
 class AnalyticsRange {
@@ -83,7 +85,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     }
   }
 
-  String _pct(double v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(1).replaceAll('.', ',')}%';
+  String _pct(double v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(1).replaceAll('.', decSep)}%';
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +106,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final series = <int, List<ExerciseStatView>>{};
     for (final r in withE1rm) {
       counts[r.exercise.id] = (counts[r.exercise.id] ?? 0) + 1;
-      names[r.exercise.id] = r.exercise.name;
+      names[r.exercise.id] = trName(r.exercise.name);
       if (r.exercise.kind == 'compound') compound.add(r.exercise.id);
       series.putIfAbsent(r.exercise.id, () => []).add(r);
     }
@@ -188,7 +190,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     // ================= Вкладка «Сила» =================
     Widget strengthTab() {
       if (withE1rm.isEmpty) {
-        return empty('За выбранный период нет завершённых тренировок. Графики появятся после первой сессии.');
+        return empty(tr('За выбранный период нет завершённых тренировок. Графики появятся после первой сессии.'));
       }
       final dipId = ids.contains(_dipsExerciseId) ? _dipsExerciseId! : (selected.isEmpty ? ids.first : selected.first);
       return ListView(
@@ -196,23 +198,23 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         children: [
           headline(
             growing.isEmpty && falling.isEmpty
-                ? 'Сила без заметных изменений за период.'
-                : 'Растут: ${growing.length} из ${ids.length} упражнений'
-                    '${falling.isEmpty ? '' : ', снижаются: ${falling.length}'}.'
-                    '${bestId == null || (growth(bestId) ?? 0) <= 0 ? '' : ' Лучший рост — ${names[bestId]} (${_pct(growth(bestId)!)}).'}',
+                ? tr('Сила без заметных изменений за период.')
+                : tr('Растут: {0} из {1} упражнений'
+                    '{2}.'
+                    '{3}', [growing.length, ids.length, falling.isEmpty ? '' : tr(', снижаются: {0}', [falling.length]), bestId == null || (growth(bestId) ?? 0) <= 0 ? '' : tr(' Лучший рост — {0} ({1}).', [names[bestId], _pct(growth(bestId)!)])]),
             icon: falling.length > growing.length ? Icons.trending_down : Icons.trending_up,
             color: falling.length > growing.length ? colorBad : colorGood,
           ),
           const SizedBox(height: 8),
-          Text('Расчётный максимум (1ПМ) по неделям, кг', style: t.titleMedium),
-          Text('Линия вверх — становитесь сильнее. Серые полосы — недели разгрузки.', style: t.bodySmall),
+          Text(tr('Расчётный максимум (1ПМ) по неделям, кг'), style: t.titleMedium),
+          Text(tr('Линия вверх — становитесь сильнее. Серые полосы — недели разгрузки.'), style: t.bodySmall),
           const SizedBox(height: 8),
           SizedBox(
             height: 260,
             child: E1rmChart(rows: withE1rm.where((r) => selected.contains(r.exercise.id)).toList(), colorOf: colorOf),
           ),
           const SizedBox(height: 12),
-          Text('Упражнения — нажмите, чтобы показать на графике', style: t.bodySmall),
+          Text(tr('Упражнения — нажмите, чтобы показать на графике'), style: t.bodySmall),
           for (final id in ids)
             Builder(builder: (context) {
               final last = series[id]!.last.stat;
@@ -223,8 +225,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                 leading: Icon(on ? Icons.check_circle : Icons.circle_outlined, color: on ? colorOf[id] : scheme.outline),
                 title: Text(names[id]!),
-                subtitle: Text('${formatKg((last.bestE1rmKg! * 10).round() / 10)} кг'
-                    '${last.e1rmDeltaPct == null ? '' : ' · к прошлой неделе ${_pct(last.e1rmDeltaPct!)}'}'),
+                subtitle: Text(tr('{0} кг'
+                    '{1}', [formatKg((last.bestE1rmKg! * 10).round() / 10), last.e1rmDeltaPct == null ? '' : tr(' · к прошлой неделе {0}', [_pct(last.e1rmDeltaPct!)])])),
                 trailing: g == null
                     ? null
                     : Container(
@@ -246,8 +248,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               );
             }),
           const Divider(height: 28),
-          Text('Изменение за неделю: ${names[dipId]}', style: t.titleMedium),
-          Text('Столбец вверх (зелёный) — 1ПМ вырос к прошлой неделе, вниз (красный) — просел, %.', style: t.bodySmall),
+          Text(tr('Изменение за неделю: {0}', [names[dipId]]), style: t.titleMedium),
+          Text(tr('Столбец вверх (зелёный) — 1ПМ вырос к прошлой неделе, вниз (красный) — просел, %.'), style: t.bodySmall),
           const SizedBox(height: 8),
           SizedBox(height: 180, child: DipsChart(rows: series[dipId]!)),
         ],
@@ -257,7 +259,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     // ================= Вкладка «Объём» =================
     Widget volumeTab() {
       if (volume.isEmpty || groups.isEmpty) {
-        return empty('Нет данных об объёме за период. Они появятся после завершённой тренировки.');
+        return empty(tr('Нет данных об объёме за период. Они появятся после завершённой тренировки.'));
       }
       final weeks = continuousWeeks(rows.map((r) => r.stat.weekStart));
       final lastWeek = volume.map((v) => v.weekStart).reduce((a, b) => a.compareTo(b) > 0 ? a : b);
@@ -277,11 +279,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       return ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          headline('Неделя с ${ruDate(parseYmd(lastWeek))}: в целевом коридоре $ok из ${groups.length} групп, '
-              'ниже — $low, выше — $high.', icon: Icons.stacked_bar_chart),
+          headline(tr('Неделя с {0}: в целевом коридоре {1} из {2} групп, '
+              'ниже — {3}, выше — {4}.', [ruDate(parseYmd(lastWeek)), ok, groups.length, low, high]), icon: Icons.stacked_bar_chart),
           const SizedBox(height: 8),
-          Text('Рабочие подходы за неделю по группам мышц', style: t.titleMedium),
-          Text('Светлая зона — целевой коридор. Нажмите на группу, чтобы увидеть её динамику.', style: t.bodySmall),
+          Text(tr('Рабочие подходы за неделю по группам мышц'), style: t.titleMedium),
+          Text(tr('Светлая зона — целевой коридор. Нажмите на группу, чтобы увидеть её динамику.'), style: t.bodySmall),
           const SizedBox(height: 4),
           for (final g in groups)
             _VolumeRow(
@@ -291,10 +293,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               onTap: () => setState(() => _muscleId = g.id),
             ),
           const SizedBox(height: 4),
-          legend(const [(colorGood, 'в коридоре'), (colorWarn, 'ниже цели'), (colorBad, 'выше цели')]),
+          legend([(colorGood, tr('в коридоре')), (colorWarn, tr('ниже цели')), (colorBad, tr('выше цели'))]),
           const Divider(height: 28),
-          Text('${group.name}: подходы по неделям', style: t.titleMedium),
-          Text('Пунктир — коридор ${group.targetSetsMin}–${group.targetSetsMax} подходов.', style: t.bodySmall),
+          Text(tr('{0}: подходы по неделям', [trName(group.name)]), style: t.titleMedium),
+          Text(tr('Пунктир — коридор {0}–{1} подходов.', [group.targetSetsMin, group.targetSetsMax]), style: t.bodySmall),
           const SizedBox(height: 8),
           SizedBox(
             height: 180,
@@ -307,13 +309,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     // ================= Вкладка «План» =================
     Widget planTab() {
-      if (totalSets == 0) return empty('Нет подходов по плану за период. Свободные тренировки сюда не попадают.');
+      if (totalSets == 0) return empty(tr('Нет подходов по плану за период. Свободные тренировки сюда не попадают.'));
       String share(int n) => '${(n / totalSets * 100).round()}%';
       return ListView(
         padding: const EdgeInsets.all(12),
         children: [
           headline(
-            'По плану выполнено ${share(done)} подходов из $totalSets; частично — ${share(partial)}, провалено — ${share(failed)}.',
+            tr('По плану выполнено {0} подходов из {1}; частично — {2}, провалено — {3}.', [share(done), totalSets, share(partial), share(failed)]),
             icon: Icons.fact_check_outlined,
             color: donePct! >= 80 ? colorGood : (donePct >= 60 ? colorWarn : colorBad),
           ),
@@ -333,13 +335,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
           const SizedBox(height: 8),
           legend([
-            (colorGood, 'выполнено: $done'),
-            (colorWarn, 'частично (недобор 3–5): $partial'),
-            (colorBad, 'провал (недобор 6+): $failed'),
+            (colorGood, tr('выполнено: {0}', [done])),
+            (colorWarn, tr('частично (недобор 3–5): {0}', [partial])),
+            (colorBad, tr('провал (недобор 6+): {0}', [failed])),
           ]),
           const Divider(height: 28),
-          Text('Доля подходов по статусам по неделям, %', style: t.titleMedium),
-          Text('Чем больше зелёного, тем точнее план попадает в ваши силы.', style: t.bodySmall),
+          Text(tr('Доля подходов по статусам по неделям, %'), style: t.titleMedium),
+          Text(tr('Чем больше зелёного, тем точнее план попадает в ваши силы.'), style: t.bodySmall),
           const SizedBox(height: 8),
           SizedBox(height: 200, child: AdherenceChart(rows: rows)),
         ],
@@ -349,7 +351,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     // ================= Вкладка «Вес» =================
     Widget weightTab() {
       if (weights.length < 2) {
-        return empty('Запишите вес хотя бы два раза на вкладке «Питание» — здесь появится график с трендом.');
+        return empty(tr('Запишите вес хотя бы два раза на вкладке «Питание» — здесь появится график с трендом.'));
       }
       final last = weights.last;
       final trend = last.trendKg ?? last.weightKg;
@@ -359,20 +361,20 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         children: [
           headline(
             d.abs() < 0.2
-                ? 'Вес стабилен: тренд ${trend.toStringAsFixed(1).replaceAll('.', ',')} кг.'
-                : 'Тренд веса ${d > 0 ? 'вырос' : 'снизился'} на '
-                    '${d.abs().toStringAsFixed(1).replaceAll('.', ',')} кг за период и сейчас '
-                    '${trend.toStringAsFixed(1).replaceAll('.', ',')} кг.',
+                ? tr('Вес стабилен: тренд {0} кг.', [formatKg1(trend)])
+                : tr('Тренд веса {0} на '
+                    '{1} кг за период и сейчас '
+                    '{2} кг.', [d > 0 ? tr('вырос') : tr('снизился'), formatKg1(d.abs()), formatKg1(trend)]),
             icon: Icons.monitor_weight_outlined,
           ),
           const SizedBox(height: 8),
-          Text('Вес тела, кг', style: t.titleMedium),
-          Text('Точки — взвешивания, линия — сглаженный тренд без суточных колебаний.', style: t.bodySmall),
+          Text(tr('Вес тела, кг'), style: t.titleMedium),
+          Text(tr('Точки — взвешивания, линия — сглаженный тренд без суточных колебаний.'), style: t.bodySmall),
           const SizedBox(height: 8),
           SizedBox(height: 240, child: WeightChart(logs: weights)),
           const SizedBox(height: 8),
-          Text('Последнее взвешивание: ${formatKg(last.weightKg)} кг (${ruDate(parseYmd(last.date))}). '
-              'Взвешиваний за период: ${weights.length}.'),
+          Text(tr('Последнее взвешивание: {0} кг ({1}). '
+              'Взвешиваний за период: {2}.', [formatKg(last.weightKg), ruDate(parseYmd(last.date)), weights.length])),
         ],
       );
     }
@@ -403,11 +405,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Аналитика'),
+          title: Text(tr('Аналитика')),
           actions: [
             if (ref.watch(activeProgramProvider).value case final p?)
               IconButton(
-                tooltip: 'PDF-отчёт за мезоцикл',
+                tooltip: tr('PDF-отчёт за мезоцикл'),
                 icon: const Icon(Icons.picture_as_pdf_outlined),
                 onPressed: () => exportMesocycleReport(context, ref, p.id),
               ),
@@ -429,18 +431,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
               child: Row(
                 children: [
-                  tile('Тренировок', '$sessions'),
-                  tile('План', donePct == null ? '—' : '${donePct.round()}%',
+                  tile(tr('Тренировок'), '$sessions'),
+                  tile(tr('План'), donePct == null ? '—' : '${donePct.round()}%',
                       color: donePct == null ? null : (donePct >= 80 ? colorGood : (donePct >= 60 ? colorWarn : colorBad))),
-                  tile('Сила растёт', ids.isEmpty ? '—' : '${growing.length}/${ids.length}',
+                  tile(tr('Сила растёт'), ids.isEmpty ? '—' : '${growing.length}/${ids.length}',
                       icon: ids.isEmpty ? null : Icons.trending_up, color: growing.isEmpty ? null : colorGood),
-                  tile('Вес', weightDelta == null
+                  tile(tr('Вес'), weightDelta == null
                       ? '—'
-                      : '${weightDelta >= 0 ? '+' : '−'}${weightDelta.abs().toStringAsFixed(1).replaceAll('.', ',')}'),
+                      : '${weightDelta >= 0 ? '+' : '−'}${formatKg1(weightDelta.abs())}'),
                 ],
               ),
             ),
-            const TabBar(tabs: [Tab(text: 'Сила'), Tab(text: 'Объём'), Tab(text: 'План'), Tab(text: 'Вес')]),
+            TabBar(tabs: [Tab(text: tr('Сила')), Tab(text: tr('Объём')), Tab(text: tr('План')), Tab(text: tr('Вес'))]),
             Expanded(child: TabBarView(children: [strengthTab(), volumeTab(), planTab(), weightTab()])),
           ],
         ),
@@ -474,7 +476,7 @@ class _VolumeRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            SizedBox(width: 118, child: Text(group.name, style: t.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            SizedBox(width: 118, child: Text(trName(group.name), style: t.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
             Expanded(
               child: LayoutBuilder(builder: (context, c) {
                 final w = c.maxWidth;
@@ -514,7 +516,7 @@ class _VolumeRow extends StatelessWidget {
             ),
             SizedBox(
               width: 44,
-              child: Text(formatKg(sets), textAlign: TextAlign.right, style: t.titleSmall?.copyWith(color: color)),
+              child: Text(formatNum(sets), textAlign: TextAlign.right, style: t.titleSmall?.copyWith(color: color)),
             ),
           ],
         ),
@@ -531,7 +533,7 @@ class E1rmChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (rows.isEmpty) return const Center(child: Text('Выберите упражнение'));
+    if (rows.isEmpty) return Center(child: Text(tr('Выберите упражнение')));
     final origin = rows.map((r) => parseYmd(r.stat.weekStart)).reduce((a, b) => a.isBefore(b) ? a : b);
     double x(String weekStartYmd) => daysBetween(origin, parseYmd(weekStartYmd)) / 7;
 
@@ -540,7 +542,7 @@ class E1rmChart extends StatelessWidget {
     var minY = double.infinity, maxY = 0.0, maxX = 0.0;
     for (final r in rows) {
       final px = x(r.stat.weekStart);
-      final py = r.stat.bestE1rmKg!;
+      final py = weightToDisplay(r.stat.bestE1rmKg!);
       byExercise.putIfAbsent(r.exercise.id, () => []).add(FlSpot(px, py));
       if (r.stat.isDeload) deloadXs.add(px);
       if (py < minY) minY = py;

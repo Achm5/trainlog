@@ -8,6 +8,7 @@ import '../../domain/dates.dart';
 import '../../domain/planning.dart';
 import '../../providers.dart';
 import '../common.dart';
+import 'package:trainlog/i18n.dart';
 
 final _exerciseNameProvider = FutureProvider.family<String, int>(
     (ref, exerciseId) async => (await ref.watch(referenceRepoProvider).exercise(exerciseId))?.name ?? '');
@@ -32,13 +33,13 @@ class ExercisePlanScreen extends ConsumerWidget {
     Future<void> editAll() async {
       final first = plans.where((p) => !p.week.isDeload).firstOrNull?.plan;
       if (first == null) return;
-      final sets = await askNumber(context, 'Подходы (все рабочие недели)', initial: first.sets.toDouble(), integer: true);
+      final sets = await askNumber(context, tr('Подходы (все рабочие недели)'), initial: first.sets.toDouble(), integer: true);
       if (sets == null || sets < 1 || !context.mounted) return;
-      final rMin = await askNumber(context, 'Повторы: нижняя граница', initial: first.repsMin.toDouble(), integer: true);
+      final rMin = await askNumber(context, tr('Повторы: нижняя граница'), initial: first.repsMin.toDouble(), integer: true);
       if (rMin == null || rMin < 1 || !context.mounted) return;
-      final rMax = await askNumber(context, 'Повторы: верхняя граница', initial: first.repsMax.toDouble(), integer: true);
+      final rMax = await askNumber(context, tr('Повторы: верхняя граница'), initial: first.repsMax.toDouble(), integer: true);
       if (rMax == null || rMax < rMin || !context.mounted) return;
-      final rir = await askNumber(context, 'Целевой RIR (0–5)', initial: first.targetRir.toDouble(), integer: true);
+      final rir = await askNumber(context, tr('Целевой RIR (0–5)'), initial: first.targetRir.toDouble(), integer: true);
       if (rir == null || rir < 0 || rir > 5) return;
       for (final p in plans.where((p) => !p.week.isDeload)) {
         await planner.updatePlan(
@@ -56,7 +57,7 @@ class ExercisePlanScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(name),
-        actions: [IconButton(tooltip: 'Задать для всех недель', icon: const Icon(Icons.playlist_add_check), onPressed: editAll)],
+        actions: [IconButton(tooltip: tr('Задать для всех недель'), icon: const Icon(Icons.playlist_add_check), onPressed: editAll)],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -65,7 +66,7 @@ class ExercisePlanScreen extends ConsumerWidget {
             height: 52,
             child: FilledButton.icon(
               icon: const Icon(Icons.check),
-              label: const Text('Готово'),
+              label: Text(tr('Готово')),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
@@ -74,7 +75,7 @@ class ExercisePlanScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          Text('Способ задания веса', style: Theme.of(context).textTheme.titleSmall),
+          Text(tr('Способ задания веса'), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           SegmentedButton<LoadMode>(
             segments: [for (final m in LoadMode.values) ButtonSegment(value: m, label: Text(m.label))],
@@ -87,10 +88,10 @@ class ExercisePlanScreen extends ConsumerWidget {
               children: [
                 Expanded(
                   child: _Field(
-                    label: 'Стартовый вес',
-                    value: '${formatKg(item.startWeightKg)} кг',
+                    label: tr('Стартовый вес'),
+                    value: tr('{0} кг', [formatKg(item.startWeightKg)]),
                     onTap: () async {
-                      final v = await askNumber(context, 'Стартовый вес, кг', initial: item.startWeightKg);
+                      final v = await askWeight(context, tr('Стартовый вес, кг'), initialKg: item.startWeightKg);
                       if (v != null && v >= 0) {
                         await planner.updatePde(pdeId, ProgramDayExercisesCompanion(startWeightKg: Value(v)));
                       }
@@ -99,10 +100,10 @@ class ExercisePlanScreen extends ConsumerWidget {
                 ),
                 Expanded(
                   child: _Field(
-                    label: 'Шаг в неделю',
-                    value: '+${formatKg(item.weeklyStepKg ?? 0)} кг',
+                    label: tr('Шаг в неделю'),
+                    value: tr('+{0} кг', [formatKg(item.weeklyStepKg ?? 0)]),
                     onTap: () async {
-                      final v = await askNumber(context, 'Прибавка в неделю, кг', initial: item.weeklyStepKg ?? 0);
+                      final v = await askWeight(context, tr('Прибавка в неделю, кг'), initialKg: item.weeklyStepKg ?? 0);
                       if (v != null) {
                         await planner.updatePde(pdeId, ProgramDayExercisesCompanion(weeklyStepKg: Value(v)));
                       }
@@ -115,14 +116,14 @@ class ExercisePlanScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text(e1rm == null
-                  ? 'Расчётного 1ПМ пока нет: веса появятся после первой завершённой тренировки с этим упражнением.'
-                  : 'Расчётный 1ПМ: ${formatKg(e1rm)} кг'),
+                  ? tr('Расчётного 1ПМ пока нет: веса появятся после первой завершённой тренировки с этим упражнением.')
+                  : tr('Расчётный 1ПМ: {0} кг', [formatKg(e1rm)])),
             ),
           _Field(
-            label: 'Отдых между подходами',
-            value: '${item.restSec} с',
+            label: tr('Отдых между подходами'),
+            value: tr('{0} с', [item.restSec]),
             onTap: () async {
-              final v = await askNumber(context, 'Отдых, с', initial: item.restSec.toDouble(), integer: true);
+              final v = await askNumber(context, tr('Отдых, с'), initial: item.restSec.toDouble(), integer: true);
               if (v != null && v >= 0 && v <= 900) {
                 await planner.updatePde(pdeId, ProgramDayExercisesCompanion(restSec: Value(v.round())));
               }
@@ -131,8 +132,8 @@ class ExercisePlanScreen extends ConsumerWidget {
           const Divider(height: 24),
           for (final v in plans) _WeekCard(view: v, mode: mode),
           const SizedBox(height: 8),
-          const Text('Изменения сохраняются сразу. Веса округляются вниз до шага округления. '
-              'Вес, исправленный вручную, не пересчитывается, пока не нажать «Сбросить».'),
+          Text(tr('Изменения сохраняются сразу. Веса округляются вниз до шага округления. '
+              'Вес, исправленный вручную, не пересчитывается, пока не нажать «Сбросить».')),
         ],
       ),
     );
@@ -190,7 +191,7 @@ class _WeekCard extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(
-                    'Неделя ${view.week.weekNo} · ${ruDate(parseYmd(view.week.startDate))}${deload ? ' · разгрузка' : ''}',
+                    tr('Неделя {0} · {1}{2}', [view.week.weekNo, ruDate(parseYmd(view.week.startDate)), deload ? tr(' · разгрузка') : '']),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
@@ -198,7 +199,7 @@ class _WeekCard extends ConsumerWidget {
                 if (p.isManual)
                   TextButton(
                     onPressed: () => planner.updatePlan(p.id, const ExerciseWeekPlansCompanion(isManual: Value(false))),
-                    child: const Text('Сбросить'),
+                    child: Text(tr('Сбросить')),
                   ),
               ],
             ),
@@ -206,22 +207,22 @@ class _WeekCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: _Field(
-                    label: 'Подходы',
+                    label: tr('Подходы'),
                     value: '${p.sets}',
                     onTap: () async {
-                      final v = await askNumber(context, 'Подходы', initial: p.sets.toDouble(), integer: true);
+                      final v = await askNumber(context, tr('Подходы'), initial: p.sets.toDouble(), integer: true);
                       if (v != null && v >= 1 && v <= 20) await save(ExerciseWeekPlansCompanion(sets: Value(v.round())));
                     },
                   ),
                 ),
                 Expanded(
                   child: _Field(
-                    label: 'Повторы',
+                    label: tr('Повторы'),
                     value: '${p.repsMin}–${p.repsMax}',
                     onTap: () async {
-                      final a = await askNumber(context, 'Повторы: нижняя граница', initial: p.repsMin.toDouble(), integer: true);
+                      final a = await askNumber(context, tr('Повторы: нижняя граница'), initial: p.repsMin.toDouble(), integer: true);
                       if (a == null || a < 1 || !context.mounted) return;
-                      final b = await askNumber(context, 'Повторы: верхняя граница',
+                      final b = await askNumber(context, tr('Повторы: верхняя граница'),
                           initial: (p.repsMax < a ? a : p.repsMax).toDouble(), integer: true);
                       if (b == null || b < a) return;
                       await save(ExerciseWeekPlansCompanion(repsMin: Value(a.round()), repsMax: Value(b.round())));
@@ -231,10 +232,10 @@ class _WeekCard extends ConsumerWidget {
                 if (mode == LoadMode.percent && !deload)
                   Expanded(
                     child: _Field(
-                      label: '% от 1ПМ',
-                      value: p.percent1rm == null ? '—' : '${formatKg(p.percent1rm)}%',
+                      label: tr('% от 1ПМ'),
+                      value: p.percent1rm == null ? '—' : '${formatNum(p.percent1rm)}%',
                       onTap: () async {
-                        final v = await askNumber(context, 'Процент от расчётного 1ПМ', initial: p.percent1rm, suffix: '%');
+                        final v = await askNumber(context, tr('Процент от расчётного 1ПМ'), initial: p.percent1rm, suffix: '%');
                         if (v != null && v > 0 && v <= 120) {
                           await planner.updatePlan(
                               p.id, ExerciseWeekPlansCompanion(percent1rm: Value(v), isManual: const Value(false)));
@@ -244,10 +245,10 @@ class _WeekCard extends ConsumerWidget {
                   ),
                 Expanded(
                   child: _Field(
-                    label: p.isManual ? 'Вес (вручную)' : 'Вес',
-                    value: '${formatKg(p.weightKg)} кг',
+                    label: p.isManual ? tr('Вес (вручную)') : tr('Вес'),
+                    value: tr('{0} кг', [formatKg(p.weightKg)]),
                     onTap: () async {
-                      final v = await askNumber(context, 'Целевой вес, кг', initial: p.weightKg);
+                      final v = await askWeight(context, tr('Целевой вес, кг'), initialKg: p.weightKg);
                       if (v == null || v < 0) return;
                       // В ручном режиме вес недели — исходное значение; в остальных правка ставит is_manual.
                       final manualFlag = deload || mode != LoadMode.manual;
@@ -261,7 +262,7 @@ class _WeekCard extends ConsumerWidget {
                     label: 'RIR',
                     value: '${p.targetRir}',
                     onTap: () async {
-                      final v = await askNumber(context, 'Целевой RIR (0–5)', initial: p.targetRir.toDouble(), integer: true);
+                      final v = await askNumber(context, tr('Целевой RIR (0–5)'), initial: p.targetRir.toDouble(), integer: true);
                       if (v != null && v >= 0 && v <= 5) await save(ExerciseWeekPlansCompanion(targetRir: Value(v.round())));
                     },
                   ),

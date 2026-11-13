@@ -2,6 +2,7 @@
 library;
 
 import 'dates.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Базовый обмен по Миффлину — Сан Жеору: 10m + 6,25h − 5a + s (s = +5 муж., −161 жен.).
 double bmrMifflin({required String sex, required double weightKg, required double heightCm, required int ageYears}) =>
@@ -13,15 +14,15 @@ int ageOn(DateTime birthDate, DateTime on) {
   return age;
 }
 
-final activityLevels = <double, String>{
-  1.2: 'Сидячий образ жизни',
-  1.375: '1–3 тренировки в неделю',
-  1.55: '3–5 тренировок',
-  1.725: '6–7 тренировок',
-  1.9: 'Физическая работа + тренировки',
+Map<double, String> get activityLevels => <double, String>{
+  1.2: tr('Сидячий образ жизни'),
+  1.375: tr('1–3 тренировки в неделю'),
+  1.55: tr('3–5 тренировок'),
+  1.725: tr('6–7 тренировок'),
+  1.9: tr('Физическая работа + тренировки'),
 };
 
-const goalLabels = {'gain': 'Набор', 'cut': 'Снижение жира', 'maintain': 'Удержание'};
+Map<String, String> get goalLabels => {'gain': tr('Набор'), 'cut': tr('Снижение жира'), 'maintain': tr('Удержание')};
 
 /// Поправка на цель g: набор +pct%, сухая масса −pct%, удержание 0.
 double goalAdjust(String goal, double pct) => switch (goal) {
@@ -143,7 +144,7 @@ int waterTargetMl({double? tdee, required double weightKg, required String sex, 
 }
 
 const mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
-const mealLabels = {'breakfast': 'Завтрак', 'lunch': 'Обед', 'dinner': 'Ужин', 'snack': 'Перекус'};
+Map<String, String> get mealLabels => {'breakfast': tr('Завтрак'), 'lunch': tr('Обед'), 'dinner': tr('Ужин'), 'snack': tr('Перекус')};
 
 /// КБЖУ порции по значениям на 100 г.
 ({double kcal, double protein, double fat, double carbs}) portion({

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/reference_repo.dart';
 import '../../providers.dart';
 import '../common.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Справочник упражнений с фильтрами: группа мышц, оборудование, тип.
 /// В режиме выбора ([pickMode]) нажатие возвращает id упражнения.
@@ -25,7 +26,11 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
 
   bool _match(ExerciseView v) {
     final e = v.exercise;
-    if (_query.isNotEmpty && !e.name.toLowerCase().contains(_query.toLowerCase())) return false;
+    if (_query.isNotEmpty &&
+        !e.name.toLowerCase().contains(_query.toLowerCase()) &&
+        !trName(e.name).toLowerCase().contains(_query.toLowerCase())) {
+      return false;
+    }
     if (_kind != null && e.kind != _kind) return false;
     if (_equipmentId != null && e.equipmentId != _equipmentId) return false;
     if (_muscleId != null && !v.muscles.any((m) => m.muscleGroupId == _muscleId)) return false;
@@ -37,15 +42,15 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     final exercises = ref.watch(exercisesProvider(_archived));
     final muscles = ref.watch(muscleGroupsProvider).value ?? const [];
     final equipment = ref.watch(equipmentProvider).value ?? const [];
-    final muscleNames = {for (final m in muscles) m.id: m.name};
+    final muscleNames = {for (final m in muscles) m.id: trName(m.name)};
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.pickMode ? 'Выбор упражнения' : 'Упражнения'),
+        title: Text(widget.pickMode ? tr('Выбор упражнения') : tr('Упражнения')),
         actions: [
           if (!widget.pickMode)
             IconButton(
-              tooltip: _archived ? 'Скрыть архивные' : 'Показать архивные',
+              tooltip: _archived ? tr('Скрыть архивные') : tr('Показать архивные'),
               icon: Icon(_archived ? Icons.inventory_2 : Icons.inventory_2_outlined),
               onPressed: () => setState(() => _archived = !_archived),
             ),
@@ -54,14 +59,14 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/exercise/new'),
         icon: const Icon(Icons.add),
-        label: const Text('Своё упражнение'),
+        label: Text(tr('Своё упражнение')),
       ),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             child: TextField(
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Поиск по названию', isDense: true),
+              decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: tr('Поиск по названию'), isDense: true),
               onChanged: (v) => setState(() => _query = v),
             ),
           ),
@@ -71,23 +76,23 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
             child: Row(
               children: [
                 _FilterMenu<int>(
-                  label: 'Группа мышц',
+                  label: tr('Группа мышц'),
                   value: _muscleId,
-                  items: {for (final m in muscles) m.id: m.name},
+                  items: {for (final m in muscles) m.id: trName(m.name)},
                   onChanged: (v) => setState(() => _muscleId = v),
                 ),
                 const SizedBox(width: 8),
                 _FilterMenu<int>(
-                  label: 'Оборудование',
+                  label: tr('Оборудование'),
                   value: _equipmentId,
-                  items: {for (final e in equipment) e.id: e.name},
+                  items: {for (final e in equipment) e.id: trName(e.name)},
                   onChanged: (v) => setState(() => _equipmentId = v),
                 ),
                 const SizedBox(width: 8),
                 _FilterMenu<String>(
-                  label: 'Тип',
+                  label: tr('Тип'),
                   value: _kind,
-                  items: const {'compound': 'Базовое', 'isolation': 'Изолирующее'},
+                  items: {'compound': tr('Базовое'), 'isolation': tr('Изолирующее')},
                   onChanged: (v) => setState(() => _kind = v),
                 ),
               ],
@@ -98,7 +103,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
               value: exercises,
               builder: (list) {
                 final items = list.where(_match).toList();
-                if (items.isEmpty) return const Center(child: Text('Ничего не найдено'));
+                if (items.isEmpty) return Center(child: Text(tr('Ничего не найдено')));
                 return ListView.builder(
                   padding: const EdgeInsets.only(bottom: 88),
                   itemCount: items.length,
@@ -107,10 +112,10 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                     final e = v.exercise;
                     final ms = [...v.muscles]..sort((a, b) => b.share.compareTo(a.share));
                     return ListTile(
-                      title: Text(e.name + (e.isArchived ? ' (в архиве)' : '')),
+                      title: Text(trName(e.name) + (e.isArchived ? tr(' (в архиве)') : '')),
                       subtitle: Text([
-                        e.kind == 'compound' ? 'Базовое' : 'Изолирующее',
-                        ms.map((m) => '${muscleNames[m.muscleGroupId] ?? ''} ${m.share.toString().replaceAll('.', ',')}').join(', '),
+                        e.kind == 'compound' ? tr('Базовое') : tr('Изолирующее'),
+                        ms.map((m) => '${muscleNames[m.muscleGroupId] ?? ''} ${m.share.toString().replaceAll('.', decSep)}').join(', '),
                       ].join(' · ')),
                       trailing: widget.pickMode
                           ? null
@@ -140,7 +145,7 @@ class _FilterMenu<T> extends StatelessWidget {
     return PopupMenuButton<T?>(
       onSelected: onChanged,
       itemBuilder: (c) => [
-        PopupMenuItem<T?>(value: null, child: Text('Все · $label')),
+        PopupMenuItem<T?>(value: null, child: Text(tr('Все · {0}', [label]))),
         for (final e in items.entries) PopupMenuItem<T?>(value: e.key, child: Text(e.value)),
       ],
       child: Chip(

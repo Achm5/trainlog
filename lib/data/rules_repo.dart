@@ -9,6 +9,7 @@ import 'app_state.dart';
 import 'database.dart';
 import 'journal_repo.dart';
 import 'planner_repo.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Запуск движка правил, жизненный цикл рекомендаций и закрытие недели.
 class RulesRepo {
@@ -358,7 +359,7 @@ class RulesRepo {
           final item = await _planner.pde(rec.programDayExerciseId!);
           final variations = (proposal['variations'] as List? ?? const []).cast<Map<String, dynamic>>();
           final target = variationId ?? (variations.isEmpty ? null : variations.first['id'] as int);
-          if (target == null) throw StateError('У упражнения нет вариаций');
+          if (target == null) throw StateError(tr('У упражнения нет вариаций'));
           previous = {'type': type, 'exercise_id': item.exerciseId};
           await (db.update(db.programDayExercises)..where((x) => x.id.equals(item.id)))
               .write(ProgramDayExercisesCompanion(exerciseId: Value(target)));
@@ -371,7 +372,7 @@ class RulesRepo {
           };
           await _planner.setDeloadWeek(rec.programId, (proposal['week_no'] as num).toInt());
         default:
-          throw StateError('Неизвестное действие: $type');
+          throw StateError(tr('Неизвестное действие: {0}', [type]));
       }
       await (db.update(db.recommendations)..where((r) => r.id.equals(id))).write(RecommendationsCompanion(
         status: const Value('accepted'),

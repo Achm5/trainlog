@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../domain/dates.dart';
 import '../domain/nutrition.dart';
 import 'database.dart';
+import 'package:trainlog/i18n.dart';
 
 class BackupException implements Exception {
   BackupException(this.message);
@@ -32,7 +33,7 @@ class BackupService {
   Future<void> importFrom(File source) async {
     final header = await source.openRead(0, 16).fold<List<int>>([], (a, b) => a..addAll(b));
     if (String.fromCharCodes(header.take(15)) != 'SQLite format 3') {
-      throw BackupException('Файл не является резервной копией приложения.');
+      throw BackupException(tr('Файл не является резервной копией приложения.'));
     }
     // Работаем с временной копией: исходный файл не меняется.
     final temp = File('${source.path}.import-${DateTime.now().microsecondsSinceEpoch}');
@@ -51,10 +52,10 @@ class BackupService {
         await db.customStatement('DETACH DATABASE src');
       }
       if (!tables.containsAll(['settings', 'set_logs', 'food_logs', 'exercises'])) {
-        throw BackupException('В файле нет таблиц приложения — это не резервная копия.');
+        throw BackupException(tr('В файле нет таблиц приложения — это не резервная копия.'));
       }
       if (version > db.schemaVersion) {
-        throw BackupException('Копия сделана более новой версией приложения. Обновите приложение и повторите импорт.');
+        throw BackupException(tr('Копия сделана более новой версией приложения. Обновите приложение и повторите импорт.'));
       }
       if (version < db.schemaVersion) {
         final upgraded = AppDatabase.file(temp);
@@ -89,7 +90,7 @@ class BackupService {
     } on BackupException {
       rethrow;
     } catch (e) {
-      throw BackupException('Не удалось прочитать резервную копию: $e');
+      throw BackupException(tr('Не удалось прочитать резервную копию: {0}', [e]));
     } finally {
       if (await temp.exists()) await temp.delete();
     }
@@ -126,14 +127,14 @@ class BackupService {
       ]);
     final rows = await q.get();
     return _csv(
-      ['Дата', 'Сессия', 'Упражнение', 'Подход', 'Разминка', 'План, кг', 'План, повторы', 'Вес, кг', 'Повторы', 'RIR',
-        'Статус', 'Вес снижен', '1ПМ, кг', 'Заметка'],
+      [tr('Дата'), tr('Сессия'), tr('Упражнение'), tr('Подход'), tr('Разминка'), trKeepKg('План, кг'), tr('План, повторы'), trKeepKg('Вес, кг'), tr('Повторы'), 'RIR',
+        tr('Статус'), tr('Вес снижен'), trKeepKg('1ПМ, кг'), tr('Заметка')],
       rows.map((r) {
         final s = r.readTable(db.setLogs);
         final ws = r.readTable(db.workoutSessions);
         return [
-          ws.date, ws.id, r.readTable(db.exercises).name, s.setNo, s.isWarmup ? 'да' : 'нет', s.plannedWeightKg,
-          s.plannedReps, s.weightKg, s.reps, s.rir, s.status, s.weightReduced ? 'да' : 'нет',
+          ws.date, ws.id, r.readTable(db.exercises).name, s.setNo, s.isWarmup ? tr('да') : tr('нет'), s.plannedWeightKg,
+          s.plannedReps, s.weightKg, s.reps, s.rir, s.status, s.weightReduced ? tr('да') : tr('нет'),
           s.e1rmKg == null ? null : (s.e1rmKg! * 100).round() / 100, s.note,
         ];
       }),
@@ -149,11 +150,11 @@ class BackupService {
     final rows = await q.get();
     double r1(double v) => (v * 10).round() / 10;
     return _csv(
-      ['Дата', 'Приём пищи', 'Продукт', 'Граммы', 'Ккал', 'Белки, г', 'Жиры, г', 'Углеводы, г'],
+      [tr('Дата'), tr('Приём пищи'), tr('Продукт'), tr('Граммы'), tr('Ккал'), tr('Белки, г'), tr('Жиры, г'), tr('Углеводы, г')],
       rows.map((r) {
         final f = r.readTable(db.foodLogs);
         return [
-          f.date, mealLabels[f.meal] ?? f.meal, r.readTableOrNull(db.products)?.name ?? 'Продукт удалён',
+          f.date, mealLabels[f.meal] ?? f.meal, r.readTableOrNull(db.products)?.name ?? tr('Продукт удалён'),
           r1(f.grams), r1(f.kcal), r1(f.proteinG), r1(f.fatG), r1(f.carbsG),
         ];
       }),

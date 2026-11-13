@@ -5,6 +5,7 @@ import '../../data/database.dart';
 import '../../domain/dates.dart';
 import '../../providers.dart';
 import '../common.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Карточка продукта: ручной ввод на 100 г, избранное, атрибуция Open Food Facts.
 /// При сохранении возвращает id продукта.
@@ -35,7 +36,7 @@ class _ProductEditScreenState extends ConsumerState<ProductEditScreen> {
     _load();
   }
 
-  String _fmt(double v) => v == v.roundToDouble() ? v.round().toString() : v.toString().replaceAll('.', ',');
+  String _fmt(double v) => v == v.roundToDouble() ? v.round().toString() : v.toString().replaceAll('.', decSep);
 
   Future<void> _load() async {
     final id = widget.productId;
@@ -66,8 +67,8 @@ class _ProductEditScreenState extends ConsumerState<ProductEditScreen> {
   Future<void> _save() async {
     final name = _name.text.trim();
     final kcal = parseNum(_kcal.text);
-    if (name.isEmpty) return toast(context, 'Введите название');
-    if (kcal == null || kcal < 0) return toast(context, 'Укажите калорийность на 100 г');
+    if (name.isEmpty) return toast(context, tr('Введите название'));
+    if (kcal == null || kcal < 0) return toast(context, tr('Укажите калорийность на 100 г'));
     final id = await ref.read(nutritionRepoProvider).saveManualProduct(
           id: widget.productId,
           name: name,
@@ -100,26 +101,26 @@ class _ProductEditScreenState extends ConsumerState<ProductEditScreen> {
     final live = widget.productId == null ? null : ref.watch(productProvider(widget.productId!)).value;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.productId == null ? 'Новый продукт' : 'Продукт'),
+        title: Text(widget.productId == null ? tr('Новый продукт') : tr('Продукт')),
         actions: [
           if (live != null)
             IconButton(
-              tooltip: 'Избранное',
+              tooltip: tr('Избранное'),
               icon: Icon(live.isFavorite ? Icons.star : Icons.star_border),
               onPressed: () => repo.setFavorite(live.id, !live.isFavorite),
             ),
           if (p != null)
             IconButton(
-              tooltip: 'Удалить',
+              tooltip: tr('Удалить'),
               icon: const Icon(Icons.delete_outline),
               onPressed: () async {
-                if (!await confirm(context, 'Удалить продукт?', message: 'Записи дневника с ним сохранятся.')) return;
+                if (!await confirm(context, tr('Удалить продукт?'), message: tr('Записи дневника с ним сохранятся.'))) return;
                 final ok = await repo.deleteProduct(p.id);
                 if (!context.mounted) return;
                 if (ok) {
                   Navigator.of(context).pop();
                 } else {
-                  toast(context, 'Продукт входит в рецепт — сначала уберите его из рецепта');
+                  toast(context, tr('Продукт входит в рецепт — сначала уберите его из рецепта'));
                 }
               },
             ),
@@ -130,38 +131,38 @@ class _ProductEditScreenState extends ConsumerState<ProductEditScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                TextField(controller: _name, decoration: const InputDecoration(labelText: 'Название')),
+                TextField(controller: _name, decoration: InputDecoration(labelText: tr('Название'))),
                 const SizedBox(height: 12),
-                TextField(controller: _brand, decoration: const InputDecoration(labelText: 'Марка (необязательно)')),
+                TextField(controller: _brand, decoration: InputDecoration(labelText: tr('Марка (необязательно)'))),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _barcode,
                   enabled: p?.source != 'off',
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Штрихкод (необязательно)'),
+                  decoration: InputDecoration(labelText: tr('Штрихкод (необязательно)')),
                 ),
                 const SizedBox(height: 16),
-                Text('На 100 г', style: Theme.of(context).textTheme.titleSmall),
+                Text(tr('На 100 г'), style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 8),
-                Row(children: [_numField(_kcal, 'Ккал'), _numField(_protein, 'Белки, г')]),
+                Row(children: [_numField(_kcal, tr('Ккал')), _numField(_protein, tr('Белки, г'))]),
                 const SizedBox(height: 12),
-                Row(children: [_numField(_fat, 'Жиры, г'), _numField(_carbs, 'Углеводы, г')]),
+                Row(children: [_numField(_fat, tr('Жиры, г')), _numField(_carbs, tr('Углеводы, г'))]),
                 const SizedBox(height: 16),
                 if (p?.source == 'off')
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Text(
-                        'Источник данных: Open Food Facts (openfoodfacts.org), код ${p!.offCode ?? p.barcode ?? ''}. '
+                        tr('Источник данных: Open Food Facts (openfoodfacts.org), код {0}. '
                         'База распространяется по лицензии Open Database License (ODbL).'
-                        '${p.syncedAt == null ? '' : '\nЗагружено: ${ruDate(DateTime.fromMillisecondsSinceEpoch(p.syncedAt!))}.'}',
+                        '{1}', [p!.offCode ?? p.barcode ?? '', p.syncedAt == null ? '' : tr('\nЗагружено: {0}.', [ruDate(DateTime.fromMillisecondsSinceEpoch(p.syncedAt!))])]),
                       ),
                     ),
                   ),
                 const SizedBox(height: 16),
-                FilledButton(onPressed: _save, child: const Text('Сохранить')),
+                FilledButton(onPressed: _save, child: Text(tr('Сохранить'))),
                 const SizedBox(height: 8),
-                const Text('Правка продукта не меняет уже сделанные записи дневника: в них хранится снимок КБЖУ.'),
+                Text(tr('Правка продукта не меняет уже сделанные записи дневника: в них хранится снимок КБЖУ.')),
               ],
             ),
     );

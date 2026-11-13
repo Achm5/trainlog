@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/database.dart';
 import '../../providers.dart';
 import '../common.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Группы мышц и целевые коридоры рабочих подходов в неделю.
 class MuscleGroupsScreen extends ConsumerWidget {
@@ -15,11 +16,11 @@ class MuscleGroupsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: Text(m.name),
+          title: Text(trName(m.name)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Коридор: ${range.start.round()}–${range.end.round()} подходов в неделю'),
+              Text(tr('Коридор: {0}–{1} подходов в неделю', [range.start.round(), range.end.round()])),
               RangeSlider(
                 values: range,
                 min: 0,
@@ -31,8 +32,8 @@ class MuscleGroupsScreen extends ConsumerWidget {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, range), child: const Text('Сохранить')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Отмена'))),
+            FilledButton(onPressed: () => Navigator.pop(ctx, range), child: Text(tr('Сохранить'))),
           ],
         ),
       ),
@@ -45,15 +46,15 @@ class MuscleGroupsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Группы мышц')),
+      appBar: AppBar(title: Text(tr('Группы мышц'))),
       body: AsyncView(
         value: ref.watch(muscleGroupsProvider),
         builder: (list) => ListView(
           children: [
             for (final m in list)
               ListTile(
-                title: Text(m.name),
-                subtitle: Text('Цель: ${m.targetSetsMin}–${m.targetSetsMax} подходов в неделю'),
+                title: Text(trName(m.name)),
+                subtitle: Text(tr('Цель: {0}–{1} подходов в неделю', [m.targetSetsMin, m.targetSetsMax])),
                 trailing: const Icon(Icons.edit_outlined),
                 onTap: () => _edit(context, ref, m),
               ),

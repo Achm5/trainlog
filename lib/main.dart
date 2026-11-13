@@ -12,6 +12,7 @@ import 'data/nutrition_repo.dart';
 import 'data/rules_repo.dart';
 import 'providers.dart';
 import 'services/notifications.dart';
+import 'package:trainlog/i18n.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,12 @@ Future<void> main() async {
   final db = AppDatabase.file(File(p.join(dir.path, dbFileName)));
   final state = FileAppState(File(p.join(dir.path, 'app_state.json')));
 
+  // Язык и единицы нужны до первых расчётов и текста: правила и уведомления их уже используют.
+  final savedLang = await state.get(stateLang);
+  final deviceLang = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+  I18n.lang = (savedLang ?? deviceLang) == 'ru' ? AppLang.ru : AppLang.en;
+  I18n.pounds = await state.get(stateUnits) == 'lb';
+
   // Закрытие недели — при первом запуске на новой неделе; пропущенные недели по очереди.
   try {
     final nutrition = NutritionRepo(db);
@@ -27,7 +34,7 @@ Future<void> main() async {
       await nutrition.applyAdaptiveTdee(week);
     });
   } catch (e) {
-    debugPrint('Закрытие недели не выполнено: $e');
+    debugPrint(tr('Закрытие недели не выполнено: {0}', [e]));
   }
 
   final savedTabs = await state.get(stateNavTabs);

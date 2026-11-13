@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/database.dart';
 import '../../providers.dart';
 import '../common.dart';
+import 'package:trainlog/i18n.dart';
 
 const _shareOptions = [0.25, 0.5, 0.75, 1.0];
 
@@ -58,9 +59,9 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
 
   Future<void> _save() async {
     final name = _name.text.trim();
-    if (name.isEmpty) return toast(context, 'Введите название');
-    if (_shares.isEmpty) return toast(context, 'Укажите хотя бы одну группу мышц');
-    if (!_shares.values.any((s) => s == 1.0)) return toast(context, 'У основной группы мышц доля должна быть 1,0');
+    if (name.isEmpty) return toast(context, tr('Введите название'));
+    if (_shares.isEmpty) return toast(context, tr('Укажите хотя бы одну группу мышц'));
+    if (!_shares.values.any((s) => s == 1.0)) return toast(context, tr('У основной группы мышц доля должна быть 1,0'));
     await ref.read(referenceRepoProvider).saveExercise(
           id: widget.exerciseId,
           name: name,
@@ -74,13 +75,13 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
 
   Future<void> _delete() async {
     final id = widget.exerciseId!;
-    if (!await confirm(context, 'Удалить упражнение?',
-        message: 'Если упражнение есть в журнале или программах, оно будет перенесено в архив.')) {
+    if (!await confirm(context, tr('Удалить упражнение?'),
+        message: tr('Если упражнение есть в журнале или программах, оно будет перенесено в архив.'))) {
       return;
     }
     final deleted = await ref.read(referenceRepoProvider).deleteOrArchive(id);
     if (!mounted) return;
-    toast(context, deleted ? 'Упражнение удалено' : 'Упражнение используется — перенесено в архив');
+    toast(context, deleted ? tr('Упражнение удалено') : tr('Упражнение используется — перенесено в архив'));
     Navigator.of(context).pop();
   }
 
@@ -93,18 +94,18 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.exerciseId == null ? 'Новое упражнение' : 'Упражнение'),
+        title: Text(widget.exerciseId == null ? tr('Новое упражнение') : tr('Упражнение')),
         actions: [
           if (_loaded != null && _loaded!.isArchived)
             IconButton(
-              tooltip: 'Вернуть из архива',
+              tooltip: tr('Вернуть из архива'),
               icon: const Icon(Icons.unarchive),
               onPressed: () async {
                 await ref.read(referenceRepoProvider).setArchived(_loaded!.id, false);
                 if (context.mounted) Navigator.of(context).pop();
               },
             ),
-          if (widget.exerciseId != null) IconButton(tooltip: 'Удалить', icon: const Icon(Icons.delete_outline), onPressed: _delete),
+          if (widget.exerciseId != null) IconButton(tooltip: tr('Удалить'), icon: const Icon(Icons.delete_outline), onPressed: _delete),
         ],
       ),
       body: !_ready
@@ -112,12 +113,12 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                TextField(controller: _name, decoration: const InputDecoration(labelText: 'Название')),
+                TextField(controller: _name, decoration: InputDecoration(labelText: tr('Название'))),
                 const SizedBox(height: 16),
                 SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'compound', label: Text('Базовое')),
-                    ButtonSegment(value: 'isolation', label: Text('Изолирующее')),
+                  segments: [
+                    ButtonSegment(value: 'compound', label: Text(tr('Базовое'))),
+                    ButtonSegment(value: 'isolation', label: Text(tr('Изолирующее'))),
                   ],
                   selected: {_kind},
                   onSelectionChanged: (s) => setState(() => _kind = s.first),
@@ -125,10 +126,10 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int?>(
                   initialValue: _equipmentId,
-                  decoration: const InputDecoration(labelText: 'Оборудование'),
+                  decoration: InputDecoration(labelText: tr('Оборудование')),
                   items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text('Не указано')),
-                    for (final e in equipment) DropdownMenuItem<int?>(value: e.id, child: Text(e.name)),
+                    DropdownMenuItem<int?>(value: null, child: Text(tr('Не указано'))),
+                    for (final e in equipment) DropdownMenuItem<int?>(value: e.id, child: Text(trName(e.name))),
                   ],
                   onChanged: (v) => setState(() => _equipmentId = v),
                 ),
@@ -136,20 +137,20 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
                 DropdownButtonFormField<int?>(
                   initialValue: bases.any((b) => b.exercise.id == _baseId) ? _baseId : null,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Базовое движение',
-                    helperText: 'Заполните, если это вариация другого упражнения',
+                  decoration: InputDecoration(
+                    labelText: tr('Базовое движение'),
+                    helperText: tr('Заполните, если это вариация другого упражнения'),
                   ),
                   items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text('Это базовое движение')),
-                    for (final b in bases) DropdownMenuItem<int?>(value: b.exercise.id, child: Text(b.exercise.name)),
+                    DropdownMenuItem<int?>(value: null, child: Text(tr('Это базовое движение'))),
+                    for (final b in bases) DropdownMenuItem<int?>(value: b.exercise.id, child: Text(trName(b.exercise.name))),
                   ],
                   onChanged: (v) => setState(() => _baseId = v),
                 ),
                 const SizedBox(height: 24),
-                Text('Группы мышц и доли', style: Theme.of(context).textTheme.titleMedium),
+                Text(tr('Группы мышц и доли'), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 4),
-                const Text('Основная группа — 1,0; вторичные — 0,25–0,75.'),
+                Text(tr('Основная группа — 1,0; вторичные — 0,25–0,75.')),
                 const SizedBox(height: 8),
                 for (final m in muscles)
                   Padding(
@@ -157,14 +158,14 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(m.name, style: Theme.of(context).textTheme.bodyLarge),
+                        Text(trName(m.name), style: Theme.of(context).textTheme.bodyLarge),
                         const SizedBox(height: 2),
                         Wrap(spacing: 6, children: [
                         for (final s in _shareOptions)
                           Padding(
                             padding: EdgeInsets.zero,
                             child: ChoiceChip(
-                              label: Text(s.toString().replaceAll('.', ',')),
+                              label: Text(s.toString().replaceAll('.', decSep)),
                               selected: _shares[m.id] == s,
                               visualDensity: VisualDensity.compact,
                               onSelected: (on) => setState(() => on ? _shares[m.id] = s : _shares.remove(m.id)),
@@ -175,7 +176,7 @@ class _ExerciseEditScreenState extends ConsumerState<ExerciseEditScreen> {
                     ),
                   ),
                 const SizedBox(height: 24),
-                FilledButton(onPressed: _save, child: const Text('Сохранить')),
+                FilledButton(onPressed: _save, child: Text(tr('Сохранить'))),
               ],
             ),
     );

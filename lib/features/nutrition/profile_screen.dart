@@ -7,8 +7,9 @@ import '../../domain/dates.dart';
 import '../../domain/nutrition.dart';
 import '../../providers.dart';
 import '../common.dart';
+import 'package:trainlog/i18n.dart';
 
-String _n(double v) => v == v.roundToDouble() ? v.round().toString() : v.toString().replaceAll('.', ',');
+String _n(double v) => v == v.roundToDouble() ? v.round().toString() : v.toString().replaceAll('.', decSep);
 
 /// Профиль и параметры питания (таблица settings). Любая правка пересчитывает норму.
 class ProfileScreen extends ConsumerWidget {
@@ -24,7 +25,7 @@ class ProfileScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Профиль и питание')),
+      appBar: AppBar(title: Text(tr('Профиль и питание'))),
       body: AsyncView(
         value: ref.watch(settingsProvider),
         builder: (s) {
@@ -33,25 +34,25 @@ class ProfileScreen extends ConsumerWidget {
           return ListView(
             children: [
               ListTile(
-                title: const Text('Имя'),
-                trailing: Text(s.name.isEmpty ? 'не указано' : s.name),
+                title: Text(tr('Имя')),
+                trailing: Text(s.name.isEmpty ? tr('не указано') : s.name),
                 onTap: () async {
-                  final v = await askText(context, 'Имя', initial: s.name);
+                  final v = await askText(context, tr('Имя'), initial: s.name);
                   if (v != null) await save(SettingsCompanion(name: Value(v.trim())));
                 },
               ),
               ListTile(
-                title: const Text('Пол'),
+                title: Text(tr('Пол')),
                 subtitle: SegmentedButton<String>(
                   showSelectedIcon: false,
-                  segments: const [ButtonSegment(value: 'm', label: Text('Муж.')), ButtonSegment(value: 'f', label: Text('Жен.'))],
+                  segments: [ButtonSegment(value: 'm', label: Text(tr('Муж.'))), ButtonSegment(value: 'f', label: Text(tr('Жен.')))],
                   selected: {s.sex},
                   onSelectionChanged: (v) => save(SettingsCompanion(sex: Value(v.first))),
                 ),
               ),
               ListTile(
-                title: const Text('Дата рождения'),
-                trailing: Text(s.birthDate == null ? 'не указана' : ruDate(parseYmd(s.birthDate!))),
+                title: Text(tr('Дата рождения')),
+                trailing: Text(s.birthDate == null ? tr('не указана') : ruDate(parseYmd(s.birthDate!))),
                 onTap: () async {
                   final d = await showDatePicker(
                     context: context,
@@ -63,10 +64,10 @@ class ProfileScreen extends ConsumerWidget {
                 },
               ),
               ListTile(
-                title: const Text('Рост'),
-                trailing: Text(s.heightCm == null ? 'не указан' : '${_n(s.heightCm!)} см'),
+                title: Text(tr('Рост')),
+                trailing: Text(s.heightCm == null ? tr('не указан') : tr('{0} см', [_n(s.heightCm!)])),
                 onTap: () async {
-                  final v = await askNumber(context, 'Рост, см', initial: s.heightCm);
+                  final v = await askNumber(context, tr('Рост, см'), initial: s.heightCm);
                   if (v != null && v >= 100 && v <= 250) await save(SettingsCompanion(heightCm: Value(v)));
                 },
               ),
@@ -76,7 +77,7 @@ class ProfileScreen extends ConsumerWidget {
                 child: DropdownButtonFormField<double>(
                   initialValue: activityLevels.containsKey(s.activityK) ? s.activityK : 1.375,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Активность'),
+                  decoration: InputDecoration(labelText: tr('Активность')),
                   items: [
                     for (final e in activityLevels.entries)
                       DropdownMenuItem(value: e.key, child: Text('${e.value} (×${_n(e.key)})')),
@@ -99,7 +100,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               if (s.goal != 'maintain')
                 ListTile(
-                  title: Text('Поправка на цель: ${s.goal == 'gain' ? '+' : '−'}${_n(s.goalAdjustPct)}%'),
+                  title: Text(tr('Поправка на цель: {0}{1}%', [s.goal == 'gain' ? '+' : '−', _n(s.goalAdjustPct)])),
                   subtitle: Slider(
                     value: s.goalAdjustPct.clamp(adjustRange.$1, adjustRange.$2).toDouble(),
                     min: adjustRange.$1,
@@ -109,7 +110,7 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
               ListTile(
-                title: Text('Белок: ${_n(s.proteinGPerKg)} г/кг'),
+                title: Text(tr('Белок: {0} г/кг', [_n(s.proteinGPerKg)])),
                 subtitle: Slider(
                   value: s.proteinGPerKg.clamp(proteinRange.$1, proteinRange.$2).toDouble(),
                   min: proteinRange.$1,
@@ -119,19 +120,19 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
               ListTile(
-                title: const Text('Жиры, не менее'),
-                trailing: Text('${_n(s.fatGPerKgMin)} г/кг'),
+                title: Text(tr('Жиры, не менее')),
+                trailing: Text(tr('{0} г/кг', [_n(s.fatGPerKgMin)])),
                 onTap: () async {
-                  final v = await askNumber(context, 'Жиры, г/кг (не менее 0,8)', initial: s.fatGPerKgMin);
+                  final v = await askNumber(context, tr('Жиры, г/кг (не менее 0,8)'), initial: s.fatGPerKgMin);
                   if (v != null && v >= 0.8 && v <= 2) await save(SettingsCompanion(fatGPerKgMin: Value(v)));
                 },
               ),
               ListTile(
-                title: const Text('Калорий в 1 кг массы'),
-                subtitle: const Text('Приближённая константа для адаптивного расхода'),
+                title: Text(trKeepKg('Калорий в 1 кг массы')),
+                subtitle: Text(tr('Приближённая константа для адаптивного расхода')),
                 trailing: Text(_n(s.kcalPerKg)),
                 onTap: () async {
-                  final v = await askNumber(context, 'ккал на 1 кг', initial: s.kcalPerKg, integer: true);
+                  final v = await askNumber(context, trKeepKg('ккал на 1 кг'), initial: s.kcalPerKg, integer: true);
                   if (v != null && v >= 5000 && v <= 9500) await save(SettingsCompanion(kcalPerKg: Value(v)));
                 },
               ),
@@ -139,28 +140,28 @@ class ProfileScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: target == null
-                    ? const Text('Норма появится, когда будут указаны дата рождения и рост и записан вес на вкладке «Питание».')
+                    ? Text(tr('Норма появится, когда будут указаны дата рождения и рост и записан вес на вкладке «Питание».'))
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Текущая норма: ${target.kcalTarget.round()} ккал',
+                          Text(tr('Текущая норма: {0} ккал', [target.kcalTarget.round()]),
                               style: Theme.of(context).textTheme.titleMedium),
-                          Text('Белки ${target.proteinG.round()} г · жиры ${target.fatG.round()} г · углеводы ${target.carbsG.round()} г'),
-                          Text('Базовый обмен ${target.bmr.round()} · расход ${target.tdee.round()} ккал '
-                              '(${target.tdeeSource == 'adaptive' ? 'адаптивный' : 'по формуле'}) · действует с ${ruDate(parseYmd(target.validFrom))}'),
+                          Text(tr('Белки {0} г · жиры {1} г · углеводы {2} г', [target.proteinG.round(), target.fatG.round(), target.carbsG.round()])),
+                          Text(tr('Базовый обмен {0} · расход {1} ккал '
+                              '({2}) · действует с {3}', [target.bmr.round(), target.tdee.round(), target.tdeeSource == 'adaptive' ? tr('адаптивный') : tr('по формуле'), ruDate(parseYmd(target.validFrom))])),
                           if (target.kcalTarget.round() == target.bmr.round())
-                            const Text('Норма поднята до базового обмена: ниже него калорийность не опускается.'),
+                            Text(tr('Норма поднята до базового обмена: ниже него калорийность не опускается.')),
                           if (target.tdeeSource == 'adaptive')
                             TextButton(
                               onPressed: () => ref.read(nutritionRepoProvider).recalcFormulaTarget(keepAdaptive: false),
-                              child: const Text('Сбросить расход к формульному'),
+                              child: Text(tr('Сбросить расход к формульному')),
                             ),
                         ],
                       ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 24),
-                child: Text('Приложение не даёт медицинских рекомендаций.'),
+                child: Text(tr('Приложение не даёт медицинских рекомендаций.')),
               ),
             ],
           );

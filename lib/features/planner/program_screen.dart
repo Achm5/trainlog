@@ -11,6 +11,7 @@ import '../common.dart';
 import '../reference/exercises_screen.dart';
 import '../report/report_actions.dart';
 import 'programs_screen.dart' show programStatusLabels;
+import 'package:trainlog/i18n.dart';
 
 /// Экран программы: дни, упражнения с перетаскиванием, контроль лимита времени.
 class ProgramScreen extends ConsumerStatefulWidget {
@@ -47,7 +48,7 @@ class _ProgramScreenState extends ConsumerState<ProgramScreen> {
           title: Text(program.name),
           actions: [
             IconButton(
-              tooltip: 'Параметры программы',
+              tooltip: tr('Параметры программы'),
               icon: const Icon(Icons.tune),
               onPressed: () => context.push('/program/$id/edit'),
             ),
@@ -56,16 +57,15 @@ class _ProgramScreenState extends ConsumerState<ProgramScreen> {
                 switch (v) {
                   case 'activate':
                     await planner.activate(id);
-                    if (context.mounted) toast(context, 'Программа активна');
+                    if (context.mounted) toast(context, tr('Программа активна'));
                   case 'copy':
-                    final delta = await askNumber(context, 'Копия программы: прибавить к весам, кг',
-                        initial: 0, suffix: 'кг (можно 0)');
+                    final delta = await askWeight(context, tr('Копия программы: прибавить к весам, кг'), initialKg: 0);
                     if (delta == null) return;
                     final end = addDays(weekStart(parseYmd(program.startDate)), 7 * program.weeksCount);
                     final start = end.isAfter(today()) ? end : nearestMonday(today());
                     final newId = await planner.copyProgram(id, startDate: start, weightDeltaKg: delta);
                     if (context.mounted) {
-                      toast(context, 'Копия создана, старт ${ruDate(start)}. Веса можно поправить в упражнениях.');
+                      toast(context, tr('Копия создана, старт {0}. Веса можно поправить в упражнениях.', [ruDate(start)]));
                       context.pushReplacement('/program/$newId');
                     }
                   case 'report':
@@ -73,19 +73,19 @@ class _ProgramScreenState extends ConsumerState<ProgramScreen> {
                   case 'archive':
                     await planner.archive(id);
                   case 'delete':
-                    if (await confirm(context, 'Удалить программу?',
-                        message: 'План будет удалён. Записи журнала сохранятся, но потеряют связь с планом.')) {
+                    if (await confirm(context, tr('Удалить программу?'),
+                        message: tr('План будет удалён. Записи журнала сохранятся, но потеряют связь с планом.'))) {
                       await planner.deleteProgram(id);
                       if (context.mounted) Navigator.of(context).pop();
                     }
                 }
               },
               itemBuilder: (c) => [
-                if (program.status != 'active') const PopupMenuItem(value: 'activate', child: Text('Сделать активной')),
-                if (program.status != 'archived') const PopupMenuItem(value: 'archive', child: Text('В архив')),
-                const PopupMenuItem(value: 'report', child: Text('PDF-отчёт для тренера')),
-                const PopupMenuItem(value: 'copy', child: Text('Создать копию')),
-                const PopupMenuItem(value: 'delete', child: Text('Удалить')),
+                if (program.status != 'active') PopupMenuItem(value: 'activate', child: Text(tr('Сделать активной'))),
+                if (program.status != 'archived') PopupMenuItem(value: 'archive', child: Text(tr('В архив'))),
+                PopupMenuItem(value: 'report', child: Text(tr('PDF-отчёт для тренера'))),
+                PopupMenuItem(value: 'copy', child: Text(tr('Создать копию'))),
+                PopupMenuItem(value: 'delete', child: Text(tr('Удалить'))),
               ],
             ),
           ],
@@ -110,8 +110,8 @@ class _ProgramScreenState extends ConsumerState<ProgramScreen> {
                         for (final w in weeks)
                           DropdownMenuItem(
                             value: w.id,
-                            child: Text('Неделя ${w.weekNo} · с ${ruDate(parseYmd(w.startDate))}'
-                                '${w.isDeload ? ' · разгрузка' : ''}'),
+                            child: Text(tr('Неделя {0} · с {1}'
+                                '{2}', [w.weekNo, ruDate(parseYmd(w.startDate)), w.isDeload ? tr(' · разгрузка') : ''])),
                           ),
                       ],
                       onChanged: (v) => setState(() => _weekId = v),
@@ -143,11 +143,11 @@ class _DayTab extends ConsumerWidget {
 
   Future<void> _move(BuildContext context, WidgetRef ref, DayExerciseView v) async {
     final others = days.where((d) => d.id != day.id).toList();
-    if (others.isEmpty) return toast(context, 'В программе один тренировочный день');
+    if (others.isEmpty) return toast(context, tr('В программе один тренировочный день'));
     final target = await showDialog<int>(
       context: context,
       builder: (c) => SimpleDialog(
-        title: Text('Перенести «${v.exercise.name}»'),
+        title: Text(tr('Перенести «{0}»', [trName(v.exercise.name)])),
         children: [
           for (final d in others)
             SimpleDialogOption(onPressed: () => Navigator.pop(c, d.id), child: Text(weekdayFull[d.weekday - 1])),
@@ -163,7 +163,7 @@ class _DayTab extends ConsumerWidget {
     final target = await showDialog<ProgramDay>(
       context: context,
       builder: (c) => SimpleDialog(
-        title: Text('Скопировать «${weekdayFull[day.weekday - 1]}» в день'),
+        title: Text(tr('Скопировать «{0}» в день', [weekdayFull[day.weekday - 1]])),
         children: [
           for (final d in days.where((d) => d.id != day.id))
             SimpleDialogOption(onPressed: () => Navigator.pop(c, d), child: Text(weekdayFull[d.weekday - 1])),
@@ -177,12 +177,12 @@ class _DayTab extends ConsumerWidget {
       final choice = await showDialog<String>(
         context: context,
         builder: (c) => AlertDialog(
-          title: Text('В дне «${weekdayFull[target.weekday - 1]}» уже есть упражнения'),
-          content: const Text('Заменить их копией или добавить копию в конец списка?'),
+          title: Text(tr('В дне «{0}» уже есть упражнения', [weekdayFull[target.weekday - 1]])),
+          content: Text(tr('Заменить их копией или добавить копию в конец списка?')),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c), child: const Text('Отмена')),
-            TextButton(onPressed: () => Navigator.pop(c, 'add'), child: const Text('Добавить')),
-            FilledButton(onPressed: () => Navigator.pop(c, 'replace'), child: const Text('Заменить')),
+            TextButton(onPressed: () => Navigator.pop(c), child: Text(tr('Отмена'))),
+            TextButton(onPressed: () => Navigator.pop(c, 'add'), child: Text(tr('Добавить'))),
+            FilledButton(onPressed: () => Navigator.pop(c, 'replace'), child: Text(tr('Заменить'))),
           ],
         ),
       );
@@ -190,7 +190,7 @@ class _DayTab extends ConsumerWidget {
       replace = choice == 'replace';
     }
     final n = await planner.copyDay(fromDayId: day.id, toDayId: target.id, replace: replace);
-    if (context.mounted) toast(context, 'Скопировано упражнений: $n → ${weekdayFull[target.weekday - 1]}');
+    if (context.mounted) toast(context, tr('Скопировано упражнений: {0} → {1}', [n, weekdayFull[target.weekday - 1]]));
   }
 
   @override
@@ -221,7 +221,7 @@ class _DayTab extends ConsumerWidget {
               dense: true,
               leading: Icon(over ? Icons.warning_amber : Icons.timer_outlined,
                   color: over ? Theme.of(context).colorScheme.error : null),
-              title: Text('Расчётная длительность: ${formatDuration(sec)} из ${program.timeLimitMin} мин'),
+              title: Text(tr('Расчётная длительность: {0} из {1} мин', [formatDuration(sec), program.timeLimitMin])),
             ),
             if (over)
               Card(
@@ -232,7 +232,7 @@ class _DayTab extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Превышен лимит времени на ${formatDuration(sec - program.timeLimitMin * 60)}',
+                      Text(tr('Превышен лимит времени на {0}', [formatDuration(sec - program.timeLimitMin * 60)]),
                           style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
                       const SizedBox(height: 8),
                       Wrap(
@@ -241,16 +241,16 @@ class _DayTab extends ConsumerWidget {
                         children: [
                           if (isolation != null)
                             ActionChip(
-                              label: Text('Убрать подход: ${isolation.exercise.name}'),
+                              label: Text(tr('Убрать подход: {0}', [trName(isolation.exercise.name)])),
                               onPressed: () => planner.removeOneSet(isolation.item.id),
                             ),
                           ActionChip(
-                            label: const Text('Сократить отдых на 30 с'),
+                            label: Text(tr('Сократить отдых на 30 с')),
                             onPressed: () => planner.shortenRest(day.id),
                           ),
                           if (items.isNotEmpty && days.length > 1)
                             ActionChip(
-                              label: const Text('Перенести упражнение'),
+                              label: Text(tr('Перенести упражнение')),
                               onPressed: () => _move(context, ref, items.last),
                             ),
                         ],
@@ -261,7 +261,7 @@ class _DayTab extends ConsumerWidget {
               ),
             Expanded(
               child: items.isEmpty
-                  ? const Center(child: Text('В этом дне пока нет упражнений'))
+                  ? Center(child: Text(tr('В этом дне пока нет упражнений')))
                   : ReorderableListView.builder(
                       padding: const EdgeInsets.only(bottom: 88),
                       itemCount: items.length,
@@ -276,25 +276,25 @@ class _DayTab extends ConsumerWidget {
                         final p = _plan(v)?.plan;
                         return ListTile(
                           key: ValueKey(v.item.id),
-                          title: Text(v.exercise.name),
+                          title: Text(trName(v.exercise.name)),
                           subtitle: Text(p == null
-                              ? 'Нет плана на эту неделю'
-                              : '${p.sets} × ${p.repsMin}–${p.repsMax} · ${formatKg(p.weightKg)} кг · RIR ${p.targetRir}'
-                                  ' · отдых ${v.item.restSec} с'),
+                              ? tr('Нет плана на эту неделю')
+                              : tr('{0} × {1}–{2} · {3} кг · RIR {4}'
+                                  ' · отдых {5} с', [p.sets, p.repsMin, p.repsMax, formatKg(p.weightKg), p.targetRir, v.item.restSec])),
                           leading: PopupMenuButton<String>(
                             icon: const Icon(Icons.more_vert),
                             onSelected: (a) async {
                               if (a == 'move') {
                                 await _move(context, ref, v);
                               } else if (a == 'delete') {
-                                if (await confirm(context, 'Убрать упражнение из дня?')) {
+                                if (await confirm(context, tr('Убрать упражнение из дня?'))) {
                                   await planner.removeExercise(v.item.id);
                                 }
                               }
                             },
-                            itemBuilder: (c) => const [
-                              PopupMenuItem(value: 'move', child: Text('Перенести в другой день')),
-                              PopupMenuItem(value: 'delete', child: Text('Убрать из дня')),
+                            itemBuilder: (c) => [
+                              PopupMenuItem(value: 'move', child: Text(tr('Перенести в другой день'))),
+                              PopupMenuItem(value: 'delete', child: Text(tr('Убрать из дня'))),
                             ],
                           ),
                           onTap: () => context.push('/plan/${v.item.id}'),
@@ -309,7 +309,7 @@ class _DayTab extends ConsumerWidget {
                   Expanded(
                     child: FilledButton.tonalIcon(
                       icon: const Icon(Icons.add),
-                      label: const Text('Добавить упражнение'),
+                      label: Text(tr('Добавить упражнение')),
                       onPressed: () async {
                         final exId = await pickExercise(context);
                         if (exId == null) return;
@@ -321,7 +321,7 @@ class _DayTab extends ConsumerWidget {
                   if (items.isNotEmpty && days.length > 1) ...[
                     const SizedBox(width: 8),
                     IconButton.outlined(
-                      tooltip: 'Скопировать день в другой',
+                      tooltip: tr('Скопировать день в другой'),
                       icon: const Icon(Icons.copy_all_outlined),
                       onPressed: () => _copyDay(context, ref, items.length),
                     ),

@@ -21,6 +21,7 @@ import 'features/reference/exercises_screen.dart';
 import 'features/reference/muscle_groups_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'providers.dart';
+import 'package:trainlog/i18n.dart';
 
 int _id(GoRouterState s) => int.parse(s.pathParameters['id']!);
 
@@ -79,12 +80,15 @@ ThemeData _theme(Brightness b) {
   );
 }
 
-class TrainLogApp extends StatelessWidget {
+class TrainLogApp extends ConsumerWidget {
   const TrainLogApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
     return MaterialApp.router(
+      // Новый ключ при смене языка или единиц пересоздаёт дерево: все тексты строятся заново.
+      key: ValueKey('${locale.lang.name}-${locale.pounds}'),
       title: 'Achm',
       // Крупный системный шрифт ограничиваем, чтобы подписи и кнопки не ломали вёрстку.
       builder: (context, child) => MediaQuery.withClampedTextScaling(
@@ -95,8 +99,8 @@ class TrainLogApp extends StatelessWidget {
       theme: _theme(Brightness.light),
       darkTheme: _theme(Brightness.dark),
       themeMode: ThemeMode.system,
-      locale: const Locale('ru'),
-      supportedLocales: const [Locale('ru')],
+      locale: Locale(locale.lang.name),
+      supportedLocales: const [Locale('ru'), Locale('en')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
     );
   }
@@ -149,7 +153,7 @@ class _HomeShellState extends ConsumerState<HomeShell> with SingleTickerProvider
           _fade.forward(from: 0.25);
         },
         destinations: [
-          for (final t in tabs) NavigationDestination(icon: Icon(t.icon), label: t.label, tooltip: t.title),
+          for (final t in tabs) NavigationDestination(icon: Icon(t.icon), label: tr(t.label), tooltip: tr(t.title)),
         ],
       ),
     );
@@ -191,45 +195,45 @@ class MoreScreen extends ConsumerWidget {
           if (!t.fixed && !enabled.contains(t.id) && t.id != 'recs' && t.id != 'exercises')
             ListTile(
               leading: Icon(t.icon),
-              title: Text(t.title),
-              subtitle: const Text('Раздел скрыт из нижнего меню'),
+              title: Text(tr(t.title)),
+              subtitle: Text(tr('Раздел скрыт из нижнего меню')),
               onTap: () => context.push('/section/${t.id}'),
             ),
-        const ListTile(title: Text('Справочники и настройки', style: TextStyle(fontWeight: FontWeight.bold))),
+        ListTile(title: Text(tr('Справочники и настройки'), style: TextStyle(fontWeight: FontWeight.bold))),
         ListTile(
           leading: const Icon(Icons.person_outline),
-          title: const Text('Профиль и питание'),
-          subtitle: const Text('Пол, возраст, рост, активность, цель и БЖУ'),
+          title: Text(tr('Профиль и питание')),
+          subtitle: Text(tr('Пол, возраст, рост, активность, цель и БЖУ')),
           onTap: () => context.push('/profile'),
         ),
         ListTile(
           leading: const Icon(Icons.list_alt),
-          title: const Text('Упражнения'),
-          subtitle: const Text('Справочник, вариации, свои упражнения'),
+          title: Text(tr('Упражнения')),
+          subtitle: Text(tr('Справочник, вариации, свои упражнения')),
           onTap: () => context.push('/exercises'),
         ),
         ListTile(
           leading: const Icon(Icons.accessibility_new),
-          title: const Text('Группы мышц'),
-          subtitle: const Text('Целевые коридоры подходов в неделю'),
+          title: Text(tr('Группы мышц')),
+          subtitle: Text(tr('Целевые коридоры подходов в неделю')),
           onTap: () => context.push('/muscles'),
         ),
         ListTile(
           leading: const Icon(Icons.lightbulb_outline),
-          title: const Text('Рекомендации'),
-          subtitle: const Text('История решений и откат изменений плана'),
+          title: Text(tr('Рекомендации')),
+          subtitle: Text(tr('История решений и откат изменений плана')),
           onTap: () => context.push('/recommendations'),
         ),
         ListTile(
           leading: const Icon(Icons.rule),
-          title: const Text('Правила'),
-          subtitle: const Text('Пороги, приоритеты и паузы движка рекомендаций'),
+          title: Text(tr('Правила')),
+          subtitle: Text(tr('Пороги, приоритеты и паузы движка рекомендаций')),
           onTap: () => context.push('/rules'),
         ),
         ListTile(
           leading: const Icon(Icons.calculate_outlined),
-          title: const Text('Калькулятор блинов'),
-          subtitle: const Text('Какие диски повесить на гриф под нужный вес'),
+          title: Text(tr('Калькулятор блинов')),
+          subtitle: Text(tr('Какие диски повесить на гриф под нужный вес')),
           onTap: () => showPlateCalculator(
             context,
             weightKg: 100,
@@ -238,14 +242,14 @@ class MoreScreen extends ConsumerWidget {
         ),
         ListTile(
           leading: const Icon(Icons.backup_outlined),
-          title: const Text('Данные и защита'),
-          subtitle: const Text('Резервная копия, импорт, CSV, PIN'),
+          title: Text(tr('Данные и защита')),
+          subtitle: Text(tr('Резервная копия, импорт, CSV, PIN')),
           onTap: () => context.push('/data'),
         ),
         ListTile(
           leading: const Icon(Icons.settings),
-          title: const Text('Настройки'),
-          subtitle: const Text('Параметры расчётов'),
+          title: Text(tr('Настройки')),
+          subtitle: Text(tr('Параметры расчётов')),
           onTap: () => context.push('/settings'),
         ),
       ],

@@ -2,6 +2,8 @@
 /// Все даты — «чистые» дни в UTC, чтобы переход на летнее время не сдвигал сутки.
 library;
 
+import 'package:trainlog/i18n.dart';
+
 DateTime dateOnly(DateTime d) => DateTime.utc(d.year, d.month, d.day);
 
 DateTime today() => dateOnly(DateTime.now());
@@ -41,7 +43,7 @@ List<DateTime> weeksToClose(DateTime? lastClosedWeekStart, DateTime now) {
   return result;
 }
 
-const weekdayShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-const weekdayFull = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+List<String> get weekdayShort => [tr('Пн'), tr('Вт'), tr('Ср'), tr('Чт'), tr('Пт'), tr('Сб'), tr('Вс')];
+List<String> get weekdayFull => [tr('Понедельник'), tr('Вторник'), tr('Среда'), tr('Четверг'), tr('Пятница'), tr('Суббота'), tr('Воскресенье')];
 
 String ruDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';

@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/analytics_repo.dart';
@@ -9,10 +10,12 @@ import 'data/planner_repo.dart';
 import 'data/reference_repo.dart';
 import 'data/rules_repo.dart';
 import 'domain/dates.dart';
+import 'domain/planning.dart';
 import 'services/notifications.dart';
 import 'services/off_client.dart';
+import 'package:trainlog/i18n.dart';
 
-final databaseProvider = Provider<AppDatabase>((ref) => throw StateError('База открывается в main()'));
+final databaseProvider = Provider<AppDatabase>((ref) => throw StateError(tr('База открывается в main()')));
 
 final plannerRepoProvider = Provider<PlannerRepo>((ref) => PlannerRepo(ref.watch(databaseProvider)));
 final journalRepoProvider = Provider<JournalRepo>((ref) => JournalRepo(ref.watch(databaseProvider)));
@@ -170,3 +173,31 @@ class WorkoutNotificationEnabled extends Notifier<bool> {
 final initialWorkoutNotificationProvider = Provider<bool>((ref) => true);
 final workoutNotificationProvider =
     NotifierProvider<WorkoutNotificationEnabled, bool>(WorkoutNotificationEnabled.new);
+
+/// Язык и единицы веса. Значения лежат в [I18n]; смена перестраивает всё приложение.
+class LocaleSettings extends Notifier<({AppLang lang, bool pounds})> {
+  @override
+  ({AppLang lang, bool pounds}) build() => (lang: I18n.lang, pounds: I18n.pounds);
+
+  Future<void> setLang(AppLang lang) async {
+    I18n.lang = lang;
+    state = (lang: lang, pounds: I18n.pounds);
+    await ref.read(appStateProvider).set(stateLang, lang.name);
+  }
+
+  /// Смена единиц переводит шаг округления на сетку новых единиц и пересчитывает активную программу.
+  Future<void> setPounds(bool pounds) async {
+    if (pounds == I18n.pounds) return;
+    I18n.pounds = pounds;
+    state = (lang: I18n.lang, pounds: pounds);
+    await ref.read(appStateProvider).set(stateUnits, pounds ? 'lb' : 'kg');
+    await ref
+        .read(referenceRepoProvider)
+        .updateSettings(SettingsCompanion(weightRoundingKg: Value(defaultRoundingStep)));
+    final planner = ref.read(plannerRepoProvider);
+    final active = await planner.activeProgram();
+    if (active != null) await planner.recalcProgram(active.id);
+  }
+}
+
+final localeProvider = NotifierProvider<LocaleSettings, ({AppLang lang, bool pounds})>(LocaleSettings.new);

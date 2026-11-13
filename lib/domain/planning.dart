@@ -1,6 +1,8 @@
 /// Расчёты планировщика (раздел 2 ТЗ). Чистые функции.
 library;
 
+import 'package:trainlog/i18n.dart';
+
 const _eps = 1e-9;
 
 /// Округление вниз до шага.
@@ -20,9 +22,10 @@ enum LoadMode {
   percent('percent', '% от 1ПМ'),
   linear('linear', 'Линейный шаг');
 
-  const LoadMode(this.db, this.label);
+  const LoadMode(this.db, this._label);
   final String db;
-  final String label;
+  final String _label;
+  String get label => tr(_label);
 
   static LoadMode fromDb(String v) => values.firstWhere((m) => m.db == v, orElse: () => manual);
 }
@@ -96,10 +99,30 @@ int dayDurationSec(Iterable<DayLoadItem> items, {required int setDurationSec, re
   return any ? total + warmupMin * 60 : 0;
 }
 
-String formatKg(double? v) {
+/// Число без лишних нулей, до двух знаков, с десятичным разделителем текущего языка.
+String formatNum(double? v) {
   if (v == null) return '—';
   final r = (v * 100).round() / 100;
   if (r == r.roundToDouble()) return r.toStringAsFixed(0);
   final s = r.toStringAsFixed(2);
-  return (s.endsWith('0') ? s.substring(0, s.length - 1) : s).replaceAll('.', ',');
+  return (s.endsWith('0') ? s.substring(0, s.length - 1) : s).replaceAll('.', decSep);
 }
+
+/// Вес в единицах показа: килограммы как есть, фунты — с точностью 0,1.
+String formatKg(double? v) {
+  if (v == null) return '—';
+  return I18n.pounds ? formatNum((weightToDisplay(v) * 10).round() / 10) : formatNum(v);
+}
+
+/// Вес с одним знаком после запятой (вес тела, тренд, разница).
+String formatKg1(double kg) => weightToDisplay(kg).toStringAsFixed(1).replaceAll('.', decSep);
+
+/// Тоннаж: тонны или тысячи фунтов.
+double tonnageValue(double kg) => weightToDisplay(kg) / 1000;
+String get tonnageUnit => I18n.pounds ? 'k lb' : tr('т');
+String formatTonnage(double kg) => '${tonnageValue(kg).toStringAsFixed(1).replaceAll('.', decSep)} $tonnageUnit';
+
+/// Шаги округления веса плана, в килограммах: 0,5–2,5 кг или 1–10 фунтов.
+List<double> get roundingSteps =>
+    I18n.pounds ? const [1 * kgPerLb, 2.5 * kgPerLb, 5 * kgPerLb, 10 * kgPerLb] : const [0.5, 1.0, 1.25, 2.5];
+double get defaultRoundingStep => I18n.pounds ? 5 * kgPerLb : 2.5;

@@ -18,6 +18,7 @@ import '../../providers.dart';
 import '../../services/security.dart';
 import '../common.dart';
 import 'pin_pad.dart';
+import 'package:trainlog/i18n.dart';
 
 final lastBackupProvider = FutureProvider<DateTime?>((ref) async {
   final v = await ref.watch(appStateProvider).get(stateLastBackupAt);
@@ -62,7 +63,7 @@ class _DataScreenState extends ConsumerState<DataScreen> {
     } on BackupException catch (e) {
       if (mounted) toast(context, e.message);
     } catch (e) {
-      if (mounted) toast(context, 'Ошибка: $e');
+      if (mounted) toast(context, tr('Ошибка: {0}', [e]));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -82,30 +83,30 @@ class _DataScreenState extends ConsumerState<DataScreen> {
 
   Future<void> _shareBackup() => _run(() async {
         final file = await _makeBackup();
-        await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], text: 'Резервная копия Achm'));
+        await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], text: tr('Резервная копия Achm')));
         await _markBackedUp();
       });
 
   Future<void> _saveBackup() => _run(() async {
         final file = await _makeBackup();
         final path = await FilePicker.saveFile(
-          dialogTitle: 'Сохранить резервную копию',
+          dialogTitle: tr('Сохранить резервную копию'),
           fileName: p.basename(file.path),
           bytes: await file.readAsBytes(),
         );
         if (path == null) return;
         await _markBackedUp();
-        if (mounted) toast(context, 'Копия сохранена');
+        if (mounted) toast(context, tr('Копия сохранена'));
       });
 
   Future<void> _import() => _run(() async {
         final picked = await FilePicker.pickFiles(type: FileType.any);
         final path = picked.isEmpty ? null : picked.first.path;
         if (path == null || !mounted) return;
-        if (!await confirm(context, 'Заменить все данные?',
-            message: 'Текущие программы, журнал и дневник будут заменены содержимым файла '
-                '«${p.basename(path)}». Отменить это нельзя — сначала сделайте копию текущих данных.',
-            ok: 'Заменить')) {
+        if (!await confirm(context, tr('Заменить все данные?'),
+            message: tr('Текущие программы, журнал и дневник будут заменены содержимым файла '
+                '«{0}». Отменить это нельзя — сначала сделайте копию текущих данных.', [p.basename(path)]),
+            ok: tr('Заменить'))) {
           return;
         }
         // Копируем выбранный файл в свою папку: исходник может быть недоступен для записи рядом.
@@ -117,7 +118,7 @@ class _DataScreenState extends ConsumerState<DataScreen> {
           if (await local.exists()) await local.delete();
         }
         await ref.read(journalRepoProvider).recalcAll();
-        if (mounted) toast(context, 'Данные восстановлены из копии');
+        if (mounted) toast(context, tr('Данные восстановлены из копии'));
       });
 
   Future<void> _shareCsv(String name, Future<String> Function() build) => _run(() async {
@@ -128,20 +129,20 @@ class _DataScreenState extends ConsumerState<DataScreen> {
       });
 
   Future<void> _setPin(Setting s) async {
-    final first = await _askPin('Новый PIN (4–8 цифр)');
+    final first = await _askPin(tr('Новый PIN (4–8 цифр)'));
     if (first == null || !mounted) return;
-    if (!isValidPin(first)) return toast(context, 'PIN — от 4 до 8 цифр');
-    final second = await _askPin('Повторите PIN');
+    if (!isValidPin(first)) return toast(context, tr('PIN — от 4 до 8 цифр'));
+    final second = await _askPin(tr('Повторите PIN'));
     if (second == null || !mounted) return;
-    if (first != second) return toast(context, 'PIN не совпадает');
+    if (first != second) return toast(context, tr('PIN не совпадает'));
     await ref.read(referenceRepoProvider).updateSettings(SettingsCompanion(pinHash: Value(pinHash(first))));
-    if (mounted) toast(context, 'PIN установлен');
+    if (mounted) toast(context, tr('PIN установлен'));
   }
 
   Future<void> _removePin(Setting s) async {
-    final pin = await _askPin('Текущий PIN');
+    final pin = await _askPin(tr('Текущий PIN'));
     if (pin == null || !mounted) return;
-    if (pinHash(pin) != s.pinHash) return toast(context, 'Неверный PIN');
+    if (pinHash(pin) != s.pinHash) return toast(context, tr('Неверный PIN'));
     await ref.read(referenceRepoProvider).updateSettings(const SettingsCompanion(pinHash: Value(null)));
     await ref.read(appStateProvider).set(stateBiometricEnabled, null);
     if (mounted) setState(() => _bioEnabled = false);
@@ -154,69 +155,69 @@ class _DataScreenState extends ConsumerState<DataScreen> {
     final last = ref.watch(lastBackupProvider).value;
     final settings = ref.watch(settingsProvider).value;
     return Scaffold(
-      appBar: AppBar(title: const Text('Данные и защита')),
+      appBar: AppBar(title: Text(tr('Данные и защита'))),
       body: ListView(
         children: [
           if (_busy) const LinearProgressIndicator(),
-          const ListTile(title: Text('Резервная копия', style: TextStyle(fontWeight: FontWeight.bold))),
+          ListTile(title: Text(tr('Резервная копия'), style: TextStyle(fontWeight: FontWeight.bold))),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: Text(last == null ? 'Копий ещё не было' : 'Последняя копия: ${ruDate(last)}'),
-            subtitle: const Text('Все данные хранятся только на телефоне. Без копии они пропадут при потере телефона '
-                'или удалении приложения.'),
+            title: Text(last == null ? tr('Копий ещё не было') : tr('Последняя копия: {0}', [ruDate(last)])),
+            subtitle: Text(tr('Все данные хранятся только на телефоне. Без копии они пропадут при потере телефона '
+                'или удалении приложения.')),
           ),
           ListTile(
             leading: const Icon(Icons.share),
-            title: const Text('Поделиться копией базы'),
-            subtitle: const Text('Файл .sqlite — в облако, мессенджер или на почту'),
+            title: Text(tr('Поделиться копией базы')),
+            subtitle: Text(tr('Файл .sqlite — в облако, мессенджер или на почту')),
             onTap: _shareBackup,
           ),
           ListTile(
             leading: const Icon(Icons.download),
-            title: const Text('Сохранить копию в файл'),
-            subtitle: const Text('Например, в «Загрузки»'),
+            title: Text(tr('Сохранить копию в файл')),
+            subtitle: Text(tr('Например, в «Загрузки»')),
             onTap: _saveBackup,
           ),
           ListTile(
             leading: const Icon(Icons.restore),
-            title: const Text('Восстановить из копии'),
-            subtitle: const Text('Импорт файла с заменой всех данных'),
+            title: Text(tr('Восстановить из копии')),
+            subtitle: Text(tr('Импорт файла с заменой всех данных')),
             onTap: _import,
           ),
           const Divider(),
-          const ListTile(title: Text('Выгрузка в CSV', style: TextStyle(fontWeight: FontWeight.bold))),
+          ListTile(title: Text(tr('Выгрузка в CSV'), style: TextStyle(fontWeight: FontWeight.bold))),
           ListTile(
             leading: const Icon(Icons.fitness_center),
-            title: const Text('Журнал тренировок'),
-            subtitle: const Text('Строка на подход'),
+            title: Text(tr('Журнал тренировок')),
+            subtitle: Text(tr('Строка на подход')),
             onTap: () => _shareCsv('achm-journal', _backup.journalCsv),
           ),
           ListTile(
             leading: const Icon(Icons.restaurant),
-            title: const Text('Дневник питания'),
-            subtitle: const Text('Строка на запись'),
+            title: Text(tr('Дневник питания')),
+            subtitle: Text(tr('Строка на запись')),
             onTap: () => _shareCsv('achm-diary', _backup.diaryCsv),
           ),
           const Divider(),
-          const ListTile(title: Text('Защита', style: TextStyle(fontWeight: FontWeight.bold))),
+          ListTile(title: Text(tr('Защита'), style: TextStyle(fontWeight: FontWeight.bold))),
           if (settings != null && settings.pinHash == null)
             ListTile(
               leading: const Icon(Icons.lock_outline),
-              title: const Text('Установить PIN'),
-              subtitle: const Text('Запрашивается при запуске приложения'),
+              title: Text(tr('Установить PIN')),
+              subtitle: Text(tr('Запрашивается при запуске приложения')),
               onTap: () => _setPin(settings),
             ),
           if (settings != null && settings.pinHash != null) ...[
             ListTile(
               leading: const Icon(Icons.lock),
-              title: const Text('PIN установлен'),
-              subtitle: const Text('Нажмите, чтобы отключить'),
+              title: Text(tr('PIN установлен')),
+              subtitle: Text(tr('Нажмите, чтобы отключить')),
               onTap: () => _removePin(settings),
             ),
             SwitchListTile(
               secondary: const Icon(Icons.fingerprint),
-              title: const Text('Вход по биометрии'),
-              subtitle: Text(_bioAvailable ? 'Отпечаток или лицо вместо PIN' : 'На устройстве не настроена биометрия'),
+              title: Text(tr('Вход по биометрии')),
+              subtitle: Text(_bioAvailable ? tr('Отпечаток или лицо вместо PIN') : tr('На устройстве не настроена биометрия')),
               value: _bioEnabled && _bioAvailable,
               onChanged: !_bioAvailable
                   ? null
@@ -226,10 +227,10 @@ class _DataScreenState extends ConsumerState<DataScreen> {
                     },
             ),
           ],
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(16),
-            child: Text('PIN не шифрует базу и не восстанавливается: если забыли его, переустановите приложение '
-                'и восстановите данные из резервной копии.'),
+            child: Text(tr('PIN не шифрует базу и не восстанавливается: если забыли его, переустановите приложение '
+                'и восстановите данные из резервной копии.')),
           ),
         ],
       ),
@@ -285,19 +286,19 @@ class _BackupReminderCardState extends ConsumerState<BackupReminderCard> {
     return Card(
       child: Column(
         children: [
-          const ListTile(
+          ListTile(
             leading: Icon(Icons.backup_outlined),
-            title: Text('Пора сделать резервную копию'),
-            subtitle: Text('Копии не было больше недели'),
+            title: Text(tr('Пора сделать резервную копию')),
+            subtitle: Text(tr('Копии не было больше недели')),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(onPressed: _snooze, child: const Text('Позже')),
+                TextButton(onPressed: _snooze, child: Text(tr('Позже'))),
                 const SizedBox(width: 8),
-                FilledButton.tonal(onPressed: widget.onOpen, child: const Text('Сделать')),
+                FilledButton.tonal(onPressed: widget.onOpen, child: Text(tr('Сделать'))),
               ],
             ),
           ),

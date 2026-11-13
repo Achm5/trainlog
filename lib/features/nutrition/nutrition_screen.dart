@@ -11,6 +11,7 @@ import '../common.dart';
 import '../motion.dart';
 import '../ruler_picker.dart';
 import 'product_picker.dart';
+import 'package:trainlog/i18n.dart';
 
 String g0(double v) => v.round().toString();
 
@@ -43,7 +44,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
     }
 
     Future<void> editWeight() async {
-      final v = await askNumber(context, 'Вес ${ruDate(_day)}, кг', initial: weight?.weightKg);
+      final v = await askWeight(context, tr('Вес {0}, кг', [ruDate(_day)]), initialKg: weight?.weightKg);
       if (v != null && v > 20 && v < 400) await repo.setWeight(_day, v);
     }
 
@@ -59,7 +60,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                       context: context, initialDate: _day, firstDate: DateTime(2020), lastDate: addDays(today(), 7));
                   if (p != null) setState(() => _day = dateOnly(p));
                 },
-                child: Text(_day == today() ? 'Сегодня' : '${weekdayShort[_day.weekday - 1]}, ${ruDate(_day)}',
+                child: Text(_day == today() ? tr('Сегодня') : '${weekdayShort[_day.weekday - 1]}, ${ruDate(_day)}',
                     textAlign: TextAlign.center),
               ),
             ),
@@ -77,11 +78,11 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Съедено: ${g0(kcal)} ккал', style: t.titleLarge),
-                        Text('Б ${g0(protein)} · Ж ${g0(fat)} · У ${g0(carbs)} г'),
+                        Text(tr('Съедено: {0} ккал', [g0(kcal)]), style: t.titleLarge),
+                        Text(tr('Б {0} · Ж {1} · У {2} г', [g0(protein), g0(fat), g0(carbs)])),
                         const SizedBox(height: 8),
-                        const Text('Норма не рассчитана: заполните профиль (пол, дата рождения, рост) и запишите вес.'),
-                        TextButton(onPressed: () => context.push('/profile'), child: const Text('Заполнить профиль')),
+                        Text(tr('Норма не рассчитана: заполните профиль (пол, дата рождения, рост) и запишите вес.')),
+                        TextButton(onPressed: () => context.push('/profile'), child: Text(tr('Заполнить профиль'))),
                       ],
                     )
                   : Column(
@@ -91,12 +92,12 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             AnimatedNumber(kcal, style: t.headlineMedium),
-                            Text(' / ${g0(target.kcalTarget)} ккал', style: t.titleMedium),
+                            Text(tr(' / {0} ккал', [g0(target.kcalTarget)]), style: t.titleMedium),
                             const Spacer(),
                             Text(
                               kcal <= target.kcalTarget
-                                  ? 'осталось ${g0(target.kcalTarget - kcal)}'
-                                  : 'сверх нормы ${g0(kcal - target.kcalTarget)}',
+                                  ? tr('осталось {0}', [g0(target.kcalTarget - kcal)])
+                                  : tr('сверх нормы {0}', [g0(kcal - target.kcalTarget)]),
                               style: t.bodyMedium,
                             ),
                           ],
@@ -111,15 +112,15 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            _Macro('Белки', protein, target.proteinG),
-                            _Macro('Жиры', fat, target.fatG),
-                            _Macro('Углеводы', carbs, target.carbsG),
+                            _Macro(tr('Белки'), protein, target.proteinG),
+                            _Macro(tr('Жиры'), fat, target.fatG),
+                            _Macro(tr('Углеводы'), carbs, target.carbsG),
                           ],
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Расход ${g0(target.tdee)} ккал (${target.tdeeSource == 'adaptive' ? 'адаптивный' : 'по формуле'}) · '
-                          'базовый обмен ${g0(target.bmr)}',
+                          tr('Расход {0} ккал ({1}) · '
+                          'базовый обмен {2}', [g0(target.tdee), target.tdeeSource == 'adaptive' ? tr('адаптивный') : tr('по формуле'), g0(target.bmr)]),
                           style: t.bodySmall,
                         ),
                       ],
@@ -129,12 +130,12 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
           Card(
             child: ListTile(
               leading: const Icon(Icons.monitor_weight_outlined),
-              title: Text(weight == null ? 'Вес не записан' : 'Вес: ${formatKg(weight.weightKg)} кг'),
+              title: Text(weight == null ? tr('Вес не записан') : tr('Вес: {0} кг', [formatKg(weight.weightKg)])),
               subtitle: Text(weight?.trendKg == null
-                  ? 'Взвешивайтесь утром — по тренду считается расход'
-                  : 'Тренд: ${weight!.trendKg!.toStringAsFixed(1).replaceAll('.', ',')} кг'),
+                  ? tr('Взвешивайтесь утром — по тренду считается расход')
+                  : tr('Тренд: {0} кг', [formatKg1(weight!.trendKg!)])),
               trailing: weight == null
-                  ? IconButton.filledTonal(tooltip: 'Записать вес', onPressed: editWeight, icon: const Icon(Icons.add))
+                  ? IconButton.filledTonal(tooltip: tr('Записать вес'), onPressed: editWeight, icon: const Icon(Icons.add))
                   : IconButton(icon: const Icon(Icons.edit_outlined), onPressed: editWeight),
               onLongPress: weight == null ? null : () => repo.setWeight(_day, null),
             ),
@@ -181,12 +182,12 @@ class _WaterCard extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    target == null ? 'Вода: $drunk мл' : 'Вода: $drunk / $target мл',
+                    target == null ? tr('Вода: {0} мл', [drunk]) : tr('Вода: {0} / {1} мл', [drunk, target]),
                     style: t.titleMedium,
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Отменить последнюю запись',
+                  tooltip: tr('Отменить последнюю запись'),
                   icon: const Icon(Icons.undo),
                   onPressed: drunk == 0 ? null : () => repo.undoWater(day),
                 ),
@@ -201,17 +202,17 @@ class _WaterCard extends ConsumerWidget {
                 builder: (context, v, _) => LinearProgressIndicator(value: v, minHeight: 8, color: blue),
               ),
             ] else
-              Text('Запишите вес — рассчитаю дневную норму.', style: t.bodySmall),
+              Text(tr('Запишите вес — рассчитаю дневную норму.'), style: t.bodySmall),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
                 for (final ml in const [200, 250, 500])
-                  ActionChip(label: Text('+$ml мл'), onPressed: () => repo.addWater(day, ml)),
+                  ActionChip(label: Text(tr('+{0} мл', [ml])), onPressed: () => repo.addWater(day, ml)),
                 ActionChip(
-                  label: const Text('Другое'),
+                  label: Text(tr('Другое')),
                   onPressed: () async {
-                    final v = await askNumber(context, 'Сколько выпито, мл', integer: true, suffix: 'мл');
+                    final v = await askNumber(context, tr('Сколько выпито, мл'), integer: true, suffix: tr('мл'));
                     if (v != null && v > 0 && v <= 5000) await repo.addWater(day, v.round());
                   },
                 ),
@@ -237,7 +238,7 @@ class _Macro extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: Theme.of(context).textTheme.labelSmall),
-          Text('${g0(value)} / ${g0(target)} г', style: Theme.of(context).textTheme.titleSmall),
+          Text(tr('{0} / {1} г', [g0(value), g0(target)]), style: Theme.of(context).textTheme.titleSmall),
           Padding(
             padding: const EdgeInsets.only(right: 12, top: 2),
             child: TweenAnimationBuilder<double>(
@@ -268,20 +269,20 @@ class _MealCard extends ConsumerWidget {
         children: [
           ListTile(
             title: Text(mealLabels[meal]!, style: Theme.of(context).textTheme.titleMedium),
-            subtitle: entries.isEmpty ? null : Text('${g0(kcal)} ккал'),
+            subtitle: entries.isEmpty ? null : Text(tr('{0} ккал', [g0(kcal)])),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: 'Скопировать со вчера',
+                  tooltip: tr('Скопировать со вчера'),
                   icon: const Icon(Icons.copy_all_outlined),
                   onPressed: () async {
                     final n = await repo.copyMeal(from: addDays(day, -1), to: day, meal: meal);
-                    if (context.mounted) toast(context, n == 0 ? 'Вчера этот приём пищи пуст' : 'Скопировано записей: $n');
+                    if (context.mounted) toast(context, n == 0 ? tr('Вчера этот приём пищи пуст') : tr('Скопировано записей: {0}', [n]));
                   },
                 ),
                 IconButton.filledTonal(
-                  tooltip: 'Добавить продукт',
+                  tooltip: tr('Добавить продукт'),
                   icon: const Icon(Icons.add),
                   onPressed: () => Navigator.of(context)
                       .push(MaterialPageRoute<void>(builder: (_) => ProductPickerScreen(day: day, meal: meal))),
@@ -302,11 +303,11 @@ class _MealCard extends ConsumerWidget {
               onDismissed: (_) => repo.deleteFood(e.log.id),
               child: ListTile(
                 dense: true,
-                title: Text(e.product?.name ?? 'Продукт удалён'),
-                subtitle: Text('${g0(e.log.grams)} г · Б ${g0(e.log.proteinG)} Ж ${g0(e.log.fatG)} У ${g0(e.log.carbsG)}'),
-                trailing: Text('${g0(e.log.kcal)} ккал'),
+                title: Text(e.product?.name ?? tr('Продукт удалён')),
+                subtitle: Text(tr('{0} г · Б {1} Ж {2} У {3}', [g0(e.log.grams), g0(e.log.proteinG), g0(e.log.fatG), g0(e.log.carbsG)])),
+                trailing: Text(tr('{0} ккал', [g0(e.log.kcal)])),
                 onTap: () async {
-                  final v = await askNumber(context, 'Граммы', initial: e.log.grams, suffix: 'г');
+                  final v = await askNumber(context, tr('Граммы'), initial: e.log.grams, suffix: tr('г'));
                   if (v != null && v > 0) await repo.updateGrams(e.log, v);
                 },
               ),

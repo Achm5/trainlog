@@ -1,6 +1,9 @@
 /// Расчёты журнала и аналитики силы (разделы 3.2 и 4.1 ТЗ). Чистые функции.
 library;
 
+import 'package:trainlog/i18n.dart';
+import 'planning.dart';
+
 enum SetStatus {
   done('done'),
   minorMiss('minor_miss'),
@@ -20,11 +23,11 @@ enum SetStatus {
   }
 
   String get label => switch (this) {
-        done => 'Выполнен',
-        minorMiss => 'Небольшой недобор',
-        partial => 'Частично',
-        failed => 'Провал',
-        skipped => 'Пропущен',
+        done => tr('Выполнен'),
+        minorMiss => tr('Небольшой недобор'),
+        partial => tr('Частично'),
+        failed => tr('Провал'),
+        skipped => tr('Пропущен'),
       };
 }
 
@@ -123,11 +126,6 @@ SessionProgress sessionProgress(Iterable<SetBrief> sets) {
   return SessionProgress(closed: closed, total: total, tonnageKg: ton);
 }
 
-String _w(double v) {
-  final r = (v * 100).round() / 100;
-  return r == r.roundToDouble() ? r.toStringAsFixed(0) : r.toString().replaceAll('.', ',');
-}
-
 /// Краткая запись рабочих подходов: «100 × 8, 8, 7 · 102,5 × 6» — повторы группируются по весу.
 String setsSummary(Iterable<SetBrief> sets) {
   final groups = <(double?, List<int>)>[];
@@ -140,7 +138,7 @@ String setsSummary(Iterable<SetBrief> sets) {
     }
   }
   return [
-    for (final (w, reps) in groups) w == null || w == 0 ? reps.join(', ') : '${_w(w)} × ${reps.join(', ')}',
+    for (final (w, reps) in groups) w == null || w == 0 ? reps.join(', ') : '${formatKg(w)} × ${reps.join(', ')}',
   ].join(' · ');
 }
 

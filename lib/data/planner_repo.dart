@@ -4,6 +4,7 @@ import '../domain/dates.dart';
 import '../domain/planning.dart';
 import '../domain/program_templates.dart';
 import 'database.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Операции планировщика: программа, недели, дни, упражнения, план по неделям.
 class PlannerRepo {
@@ -73,7 +74,7 @@ class PlannerRepo {
     return db.transaction(() async {
       final byName = {for (final e in await db.select(db.exercises).get()) e.name: e};
       final id = await createProgram(
-        name: t.name,
+        name: trName(t.name),
         startDate: startDate,
         weeksCount: t.weeks,
         timeLimitMin: 75,
@@ -83,10 +84,10 @@ class PlannerRepo {
       final dayIds = {for (final d in await daysOf(id)) d.weekday: d.id};
       for (final d in t.days) {
         final dayId = dayIds[d.weekday]!;
-        await renameDay(dayId, d.name);
+        await renameDay(dayId, trName(d.name));
         for (final e in d.exercises) {
           final ex = byName[e.name];
-          if (ex == null) throw StateError('В справочнике нет упражнения «${e.name}»');
+          if (ex == null) throw StateError(tr('В справочнике нет упражнения «{0}»', [e.name]));
           await addExercise(
             dayId: dayId,
             exerciseId: ex.id,
@@ -108,11 +109,11 @@ class PlannerRepo {
   /// Создаёт черновик и возвращает его id.
   Future<int> importProgramCsv(String csv, {required DateTime startDate}) {
     final lines = csv.replaceAll('\uFEFF', '').split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
-    if (lines.length < 2) throw const FormatException('Файл пуст');
+    if (lines.length < 2) throw FormatException(tr('Файл пуст'));
     final head = [for (final h in lines.first.split(';')) h.trim().toLowerCase()];
     int col(String name) {
       final i = head.indexOf(name);
-      if (i < 0) throw FormatException('Нет колонки «$name»');
+      if (i < 0) throw FormatException(tr('Нет колонки «{0}»', [name]));
       return i;
     }
 
@@ -123,15 +124,15 @@ class PlannerRepo {
     final rows = [for (final l in lines.skip(1)) [for (final c in l.split(';')) c.trim()]];
     String? at(List<String> r, int i) => i < 0 || i >= r.length || r[i].isEmpty ? null : r[i];
     int intAt(List<String> r, int i, String what) =>
-        int.tryParse(at(r, i) ?? '') ?? (throw FormatException('Не число в колонке «$what»: ${r.join(';')}'));
+        int.tryParse(at(r, i) ?? '') ?? (throw FormatException(tr('Не число в колонке «{0}»: {1}', [what, r.join(';')])));
 
     return db.transaction(() async {
       final weeksCount = rows.map((r) => intAt(r, cWeek, 'week')).reduce((a, b) => a > b ? a : b);
-      if (weeksCount < 3 || weeksCount > 12) throw const FormatException('В программе должно быть от 3 до 12 недель');
+      if (weeksCount < 3 || weeksCount > 12) throw FormatException(tr('В программе должно быть от 3 до 12 недель'));
       final deloadWeeks = {for (final r in rows) if (at(r, cDeload) == '1') intAt(r, cWeek, 'week')};
       final weekdays = {for (final r in rows) intAt(r, cDay, 'weekday')}.toList()..sort();
       final programId = await createProgram(
-        name: at(rows.first, cProgram) ?? 'Импорт',
+        name: at(rows.first, cProgram) ?? tr('Импорт'),
         startDate: startDate,
         weeksCount: weeksCount,
         timeLimitMin: 75,
@@ -145,7 +146,7 @@ class PlannerRepo {
       final pdeByKey = <String, int>{};
 
       for (final r in rows) {
-        final name = at(r, cEx) ?? (throw FormatException('Пустое упражнение: ${r.join(';')}'));
+        final name = at(r, cEx) ?? (throw FormatException(tr('Пустое упражнение: {0}', [r.join(';')])));
         var exId = exercises[name.toLowerCase()];
         if (exId == null) {
           exId = await db.into(db.exercises).insert(ExercisesCompanion.insert(
@@ -224,7 +225,7 @@ class PlannerRepo {
       final deload = srcWeeks.where((w) => w.isDeload).map((w) => w.weekNo).firstOrNull;
       final srcDays = await daysOf(sourceId);
       final newId = await createProgram(
-        name: '${src.name} (копия)',
+        name: tr('{0} (копия)', [src.name]),
         startDate: startDate,
         weeksCount: src.weeksCount,
         timeLimitMin: src.timeLimitMin,

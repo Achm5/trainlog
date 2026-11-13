@@ -2,6 +2,9 @@
 /// Это ориентир по нагрузке, а не медицинская оценка.
 library;
 
+import 'package:trainlog/i18n.dart';
+import 'planning.dart';
+
 /// Закрытая календарная неделя (с понедельника) — агрегаты завершённых тренировок.
 class LoadWeek {
   const LoadWeek({
@@ -73,7 +76,7 @@ class OvertrainingSignal {
 String _pct(double v) => '${(v * 100).round()}%';
 String _num(double v) {
   final r = (v * 10).round() / 10;
-  return (r == r.roundToDouble() ? r.toStringAsFixed(0) : r.toStringAsFixed(1)).replaceAll('.', ',');
+  return (r == r.roundToDouble() ? r.toStringAsFixed(0) : r.toStringAsFixed(1)).replaceAll('.', decSep);
 }
 
 /// Признаки по закрытым неделям [weeks] (подряд по календарю, последняя — только что закрытая)
@@ -104,8 +107,8 @@ List<OvertrainingSignal> overtrainingSignals(
     }
     if (considered >= 2 && falling.length / considered >= t.e1rmDropShare) {
       out.add(OvertrainingSignal('e1rm_drop',
-          'Расчётный 1ПМ снижается ${t.e1rmDropWeeks} нед. подряд в ${falling.length} из $considered упражнений: '
-          '${falling.take(4).join(', ')}${falling.length > 4 ? '…' : ''}.'));
+          tr('Расчётный 1ПМ снижается {0} нед. подряд в {1} из {2} упражнений: '
+          '{3}{4}.', [t.e1rmDropWeeks, falling.length, considered, falling.take(4).map(trName).join(', '), falling.length > 4 ? '…' : ''])));
     }
   }
 
@@ -114,8 +117,8 @@ List<OvertrainingSignal> overtrainingSignals(
     final tail = work.sublist(work.length - t.badSetsWeeks);
     if (tail.every((w) => w.totalSets > 0 && w.badShare >= t.badSetsShare)) {
       out.add(OvertrainingSignal('bad_sets',
-          'Недоборы повторов: ${tail.map((w) => _pct(w.badShare)).join(', ')} подходов жёлтые и красные '
-          '(${t.badSetsWeeks} нед. подряд, порог ${_pct(t.badSetsShare)}).'));
+          tr('Недоборы повторов: {0} подходов жёлтые и красные '
+          '({1} нед. подряд, порог {2}).', [tail.map((w) => _pct(w.badShare)).join(', '), t.badSetsWeeks, _pct(t.badSetsShare)])));
     }
   }
 
@@ -127,8 +130,8 @@ List<OvertrainingSignal> overtrainingSignals(
       final avg = base.map((w) => w.tonnageKg).reduce((a, b) => a + b) / base.length;
       if (avg > 0 && last.tonnageKg / avg >= t.spikeRatio) {
         out.add(OvertrainingSignal('load_spike',
-            'Тоннаж недели в ${_num(last.tonnageKg / avg)} раза выше среднего за ${base.length} нед. '
-            '(${_num(last.tonnageKg / 1000)} т против ${_num(avg / 1000)} т).'));
+            tr('Тоннаж недели в {0} раза выше среднего за {1} нед. '
+            '({2} против {3}).', [_num(last.tonnageKg / avg), base.length, formatTonnage(last.tonnageKg), formatTonnage(avg)])));
       }
     }
   }
@@ -138,8 +141,8 @@ List<OvertrainingSignal> overtrainingSignals(
     final over = [for (final m in lastWeekMuscles) if (m.targetMax > 0 && m.sets > m.targetMax * t.volumeOverK) m];
     if (over.isNotEmpty) {
       out.add(OvertrainingSignal('volume_over',
-          'Объём выше коридора больше чем на ${_pct(t.volumeOverK - 1)}: '
-          '${over.map((m) => '${m.name} — ${_num(m.sets)} подх. при максимуме ${m.targetMax}').join('; ')}.'));
+          tr('Объём выше коридора больше чем на {0}: '
+          '{1}.', [_pct(t.volumeOverK - 1), over.map((m) => tr('{0} — {1} подх. при максимуме {2}', [trName(m.name), _num(m.sets), m.targetMax])).join('; ')])));
     }
   }
 
@@ -150,7 +153,7 @@ List<OvertrainingSignal> overtrainingSignals(
     streak++;
   }
   if (streak >= t.weeksWithoutDeload) {
-    out.add(OvertrainingSignal('no_deload', '$streak нед. тренировок подряд без разгрузки и отдыха.'));
+    out.add(OvertrainingSignal('no_deload', tr('{0} нед. тренировок подряд без разгрузки и отдыха.', [streak])));
   }
   return out;
 }

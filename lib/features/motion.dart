@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../domain/planning.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Переход между экранами: мягкое проявление со сдвигом.
 class FadeSlideTransitionsBuilder extends PageTransitionsBuilder {
@@ -143,10 +144,10 @@ class _RecordBannerState extends State<_RecordBanner> with SingleTickerProviderS
                   children: [
                     const Icon(Icons.emoji_events, size: 56, color: Color(0xFFF2B01E)),
                     const SizedBox(height: 8),
-                    Text('Новый рекорд!', style: Theme.of(context).textTheme.headlineSmall),
+                    Text(tr('Новый рекорд!'), style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 4),
                     Text(widget.exercise, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
-                    Text('Расчётный 1ПМ: ${formatKg((widget.e1rmKg * 10).round() / 10)} кг',
+                    Text(tr('Расчётный 1ПМ: {0} кг', [formatKg((widget.e1rmKg * 10).round() / 10)]),
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scheme.primary)),
                   ],
                 ),

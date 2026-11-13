@@ -8,7 +8,7 @@ import '../../domain/dates.dart';
 import '../../domain/planning.dart';
 import '../../providers.dart';
 import '../common.dart';
-import '../settings/settings_screen.dart' show roundingSteps;
+import 'package:trainlog/i18n.dart';
 
 /// Параметры программы (раздел 2.1 ТЗ). Для новой программы задаются дни недели и длина цикла;
 /// у существующей меняются название, лимит времени, неделя разгрузки и коэффициенты.
@@ -21,7 +21,7 @@ class ProgramFormScreen extends ConsumerStatefulWidget {
 }
 
 class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
-  final _name = TextEditingController(text: 'Мезоцикл');
+  final _name = TextEditingController(text: tr('Мезоцикл'));
   Set<int> _weekdays = {1, 3, 5};
   int _timeLimit = 75;
   int _weeks = 5;
@@ -30,7 +30,7 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
   double _setsK = 0.5;
   double _weightK = 0.9;
   int _rirAdd = 2;
-  double _step = 2.5;
+  double _step = defaultRoundingStep;
   bool _ready = false;
 
   bool get _isNew => widget.programId == null;
@@ -72,8 +72,8 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
 
   Future<void> _save() async {
     final name = _name.text.trim();
-    if (name.isEmpty) return toast(context, 'Введите название');
-    if (_weekdays.isEmpty) return toast(context, 'Выберите хотя бы один день недели');
+    if (name.isEmpty) return toast(context, tr('Введите название'));
+    if (_weekdays.isEmpty) return toast(context, tr('Выберите хотя бы один день недели'));
     final planner = ref.read(plannerRepoProvider);
     await ref.read(referenceRepoProvider).updateSettings(SettingsCompanion(weightRoundingKg: Value(_step)));
     if (_isNew) {
@@ -110,15 +110,15 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: AppBar(title: Text(_isNew ? 'Новая программа' : 'Параметры программы')),
+      appBar: AppBar(title: Text(_isNew ? tr('Новая программа') : tr('Параметры программы'))),
       body: !_ready
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                TextField(controller: _name, decoration: const InputDecoration(labelText: 'Название')),
+                TextField(controller: _name, decoration: InputDecoration(labelText: tr('Название'))),
                 const SizedBox(height: 20),
-                Text('Дни недели', style: t.titleSmall),
+                Text(tr('Дни недели'), style: t.titleSmall),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
@@ -134,16 +134,16 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                Text('Лимит времени на тренировку: $_timeLimit мин', style: t.titleSmall),
+                Text(tr('Лимит времени на тренировку: {0} мин', [_timeLimit]), style: t.titleSmall),
                 Slider(
                   value: _timeLimit.toDouble(),
                   min: 20,
                   max: 180,
                   divisions: 32,
-                  label: '$_timeLimit мин',
+                  label: tr('{0} мин', [_timeLimit]),
                   onChanged: (v) => setState(() => _timeLimit = v.round()),
                 ),
-                Text('Длина мезоцикла: $_weeks нед.', style: t.titleSmall),
+                Text(tr('Длина мезоцикла: {0} нед.', [_weeks]), style: t.titleSmall),
                 Slider(
                   value: _weeks.toDouble(),
                   min: 3,
@@ -161,26 +161,26 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
                 DropdownButtonFormField<int?>(
                   key: ValueKey('deload-$_deloadWeek-$_weeks'),
                   initialValue: _deloadWeek,
-                  decoration: const InputDecoration(labelText: 'Неделя разгрузки'),
+                  decoration: InputDecoration(labelText: tr('Неделя разгрузки')),
                   items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text('Нет')),
+                    DropdownMenuItem<int?>(value: null, child: Text(tr('Нет'))),
                     for (var n = 2; n <= _weeks; n++)
-                      DropdownMenuItem<int?>(value: n, child: Text(n == _weeks ? 'Неделя $n (последняя)' : 'Неделя $n')),
+                      DropdownMenuItem<int?>(value: n, child: Text(n == _weeks ? tr('Неделя {0} (последняя)', [n]) : tr('Неделя {0}', [n]))),
                   ],
                   onChanged: (v) => setState(() => _deloadWeek = v),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<double>(
-                  initialValue: roundingSteps.contains(_step) ? _step : 2.5,
-                  decoration: const InputDecoration(labelText: 'Шаг округления веса'),
-                  items: [for (final v in roundingSteps) DropdownMenuItem(value: v, child: Text('${formatKg(v)} кг'))],
-                  onChanged: (v) => setState(() => _step = v ?? 2.5),
+                  initialValue: roundingSteps.contains(_step) ? _step : defaultRoundingStep,
+                  decoration: InputDecoration(labelText: tr('Шаг округления веса')),
+                  items: [for (final v in roundingSteps) DropdownMenuItem(value: v, child: Text(tr('{0} кг', [formatKg(v)])))],
+                  onChanged: (v) => setState(() => _step = v ?? defaultRoundingStep),
                 ),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Стартовая дата'),
-                  subtitle: Text('${ruDate(_start)} · неделя с ${ruDate(weekStart(_start))}'),
+                  title: Text(tr('Стартовая дата')),
+                  subtitle: Text(tr('{0} · неделя с {1}', [ruDate(_start), ruDate(weekStart(_start))])),
                   trailing: const Icon(Icons.event),
                   enabled: _isNew,
                   onTap: () async {
@@ -194,9 +194,9 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
                   },
                 ),
                 const Divider(height: 32),
-                Text('Разгрузка', style: t.titleMedium),
+                Text(tr('Разгрузка'), style: t.titleMedium),
                 const SizedBox(height: 8),
-                Text('Подходы × ${_setsK.toStringAsFixed(2).replaceAll('.', ',')} (округление вверх, не меньше 1)'),
+                Text(tr('Подходы × {0} (округление вверх, не меньше 1)', [_setsK.toStringAsFixed(2).replaceAll('.', ',')])),
                 Slider(
                   value: _setsK,
                   min: 0.3,
@@ -204,7 +204,7 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
                   divisions: 14,
                   onChanged: (v) => setState(() => _setsK = (v * 20).round() / 20),
                 ),
-                Text('Вес × ${_weightK.toStringAsFixed(2).replaceAll('.', ',')}'),
+                Text(tr('Вес × {0}', [_weightK.toStringAsFixed(2).replaceAll('.', decSep)])),
                 Slider(
                   value: _weightK,
                   min: 0.7,
@@ -212,7 +212,7 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
                   divisions: 30,
                   onChanged: (v) => setState(() => _weightK = (v * 100).round() / 100),
                 ),
-                Text('Целевой RIR +$_rirAdd'),
+                Text(tr('Целевой RIR +{0}', [_rirAdd])),
                 Slider(
                   value: _rirAdd.toDouble(),
                   min: 0,
@@ -221,7 +221,7 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
                   onChanged: (v) => setState(() => _rirAdd = v.round()),
                 ),
                 const SizedBox(height: 16),
-                FilledButton(onPressed: _save, child: Text(_isNew ? 'Создать программу' : 'Сохранить')),
+                FilledButton(onPressed: _save, child: Text(_isNew ? tr('Создать программу') : tr('Сохранить'))),
               ],
             ),
     );

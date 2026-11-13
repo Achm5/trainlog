@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../data/report_repo.dart';
 import '../domain/dates.dart';
 import '../domain/planning.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Ресурсы отчёта: шрифты с кириллицей и логотип (PNG).
 class PdfAssets {
@@ -24,9 +25,12 @@ const _good = PdfColor.fromInt(0xFF2E9E4F);
 const _warn = PdfColor.fromInt(0xFFE0A800);
 const _bad = PdfColor.fromInt(0xFFD64545);
 
-String _n1(double v) => ((v * 10).round() / 10).toStringAsFixed(1).replaceAll('.', ',').replaceAll(',0', '');
-String _signedPct(double v) => '${v > 0 ? '+' : ''}${v.toStringAsFixed(1).replaceAll('.', ',')}%';
-String _tons(double kg) => _n1(kg / 1000);
+String _n1(double v) {
+  final s = ((v * 10).round() / 10).toStringAsFixed(1);
+  return (s.endsWith('.0') ? s.substring(0, s.length - 2) : s).replaceAll('.', decSep);
+}
+String _signedPct(double v) => '${v > 0 ? '+' : ''}${v.toStringAsFixed(1).replaceAll('.', decSep)}%';
+String _tons(double kg) => _n1(tonnageValue(kg));
 String _kg(double v) => formatKg((v * 10).round() / 10);
 
 String reportFileName(MesocycleReport r) {
@@ -39,12 +43,12 @@ String reportFileName(MesocycleReport r) {
 Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
   final logo = pw.MemoryImage(assets.logo);
   final doc = pw.Document(
-    title: 'Отчёт за мезоцикл — ${r.programName}',
+    title: tr('Отчёт за мезоцикл — {0}', [r.programName]),
     author: r.athlete.isEmpty ? 'Achm' : r.athlete,
     creator: 'Achm',
     theme: pw.ThemeData.withFont(base: pw.Font.ttf(assets.regular), bold: pw.Font.ttf(assets.bold)),
   );
-  final period = '${ruDate(r.from)} — ${ruDate(r.to)} · ${r.weeksCount} нед.';
+  final period = tr('{0} — {1} · {2} нед.', [ruDate(r.from), ruDate(r.to), r.weeksCount]);
 
   pw.Widget header(pw.Context ctx) {
     final first = ctx.pageNumber == 1;
@@ -60,17 +64,17 @@ Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: first
                   ? [
-                      pw.Text('Отчёт за мезоцикл',
+                      pw.Text(tr('Отчёт за мезоцикл'),
                           style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: _ink)),
                       pw.SizedBox(height: 3),
                       pw.Text(r.programName, style: const pw.TextStyle(fontSize: 13, color: _ink)),
                       pw.SizedBox(height: 2),
                       pw.Text(period, style: const pw.TextStyle(fontSize: 9, color: _muted)),
                       if (r.athlete.isNotEmpty)
-                        pw.Text('Спортсмен: ${r.athlete}', style: const pw.TextStyle(fontSize: 9, color: _muted)),
+                        pw.Text(tr('Спортсмен: {0}', [r.athlete]), style: const pw.TextStyle(fontSize: 9, color: _muted)),
                     ]
                   : [
-                      pw.Text('Отчёт за мезоцикл · ${r.programName}',
+                      pw.Text(tr('Отчёт за мезоцикл · {0}', [r.programName]),
                           style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _ink)),
                       pw.Text(period, style: const pw.TextStyle(fontSize: 8, color: _muted)),
                     ],
@@ -97,8 +101,8 @@ Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
         child: pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text('Achm · сформировано ${ruDate(r.generatedAt)}', style: const pw.TextStyle(fontSize: 8, color: _muted)),
-            pw.Text('стр. ${ctx.pageNumber} из ${ctx.pagesCount}', style: const pw.TextStyle(fontSize: 8, color: _muted)),
+            pw.Text(tr('Achm · сформировано {0}', [ruDate(r.generatedAt)]), style: const pw.TextStyle(fontSize: 8, color: _muted)),
+            pw.Text(tr('стр. {0} из {1}', [ctx.pageNumber, ctx.pagesCount]), style: const pw.TextStyle(fontSize: 8, color: _muted)),
           ],
         ),
       );
@@ -182,48 +186,48 @@ Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
   final falling = r.exercises.where((e) => (e.deltaPct ?? 0) < -0.5).length;
   final measured = r.exercises.where((e) => e.deltaPct != null).length;
   final strength = [
-    if (growing > 0) 'вырос в $growing',
-    if (falling > 0) 'снизился в $falling',
-    if (measured - growing - falling > 0) 'без изменений в ${measured - growing - falling}',
+    if (growing > 0) tr('вырос в {0}', [growing]),
+    if (falling > 0) tr('снизился в {0}', [falling]),
+    if (measured - growing - falling > 0) tr('без изменений в {0}', [measured - growing - falling]),
   ];
   final summaryText = <String>[
-    'Проведено тренировок по плану: ${r.sessionsDone} из ${r.sessionsPlanned}.',
+    tr('Проведено тренировок по плану: {0} из {1}.', [r.sessionsDone, r.sessionsPlanned]),
     if (done != null)
-      'Выполнено ${(done * 100).round()}% подходов (жёлтых — ${r.setsPartial}, красных — ${r.setsFailed} из ${r.setsTotal}).',
-    if (measured > 0) 'Расчётный 1ПМ ${strength.join(', ')} из $measured упражнений.',
+      tr('Выполнено {0}% подходов (жёлтых — {1}, красных — {2} из {3}).', [(done * 100).round(), r.setsPartial, r.setsFailed, r.setsTotal]),
+    if (measured > 0) tr('Расчётный 1ПМ {0} из {1} упражнений.', [strength.join(', '), measured]),
   ].join(' ');
 
   final weightValue = r.weightStart == null
       ? '—'
       : r.weightEnd == null
-          ? '${_kg(r.weightStart!)} кг'
+          ? tr('{0} кг', [_kg(r.weightStart!)])
           : '${_kg(r.weightStart!)} › ${_kg(r.weightEnd!)}';
   final weightSub = r.weightStart != null && r.weightEnd != null
-      ? 'кг, ${r.weightEnd! - r.weightStart! >= 0 ? '+' : ''}${_n1(r.weightEnd! - r.weightStart!)} кг по тренду'
-      : 'по взвешиваниям периода';
+      ? tr('кг, {0}{1} кг по тренду', [r.weightEnd! - r.weightStart! >= 0 ? '+' : '', _n1(weightToDisplay(r.weightEnd! - r.weightStart!))])
+      : tr('по взвешиваниям периода');
 
   final content = <pw.Widget>[
     pw.Row(children: [
-      tile('Тренировки', '${r.sessionsDone} / ${r.sessionsPlanned}', sub: 'по плану программы'),
-      tile('Выполнение плана', done == null ? '—' : '${(done * 100).round()}%', sub: 'зелёные подходы'),
-      tile('Тоннаж', '${_tons(r.tonnageKg)} т', sub: 'рабочие подходы'),
-      tile('Вес тела', weightValue, sub: weightSub),
+      tile(tr('Тренировки'), '${r.sessionsDone} / ${r.sessionsPlanned}', sub: tr('по плану программы')),
+      tile(tr('Выполнение плана'), done == null ? '—' : '${(done * 100).round()}%', sub: tr('зелёные подходы')),
+      tile(tr('Тоннаж'), '${_tons(r.tonnageKg)} $tonnageUnit', sub: tr('рабочие подходы')),
+      tile(tr('Вес тела'), weightValue, sub: weightSub),
     ]),
     pw.SizedBox(height: 8),
     pw.Text(summaryText, style: const pw.TextStyle(fontSize: 9.5, color: _ink, lineSpacing: 2)),
   ];
 
   // ---------- Сила ----------
-  content.add(section('Сила: расчётный 1ПМ, кг', hint: 'По формуле Эпли, лучший подход недели; разгрузочные недели не учитываются.'));
+  content.add(section(tr('Сила: расчётный 1ПМ, кг'), hint: tr('По формуле Эпли, лучший подход недели; разгрузочные недели не учитываются.')));
   if (r.exercises.isEmpty) {
-    content.add(pw.Text('Нет завершённых подходов с весом за период.', style: const pw.TextStyle(fontSize: 9, color: _muted)));
+    content.add(pw.Text(tr('Нет завершённых подходов с весом за период.'), style: const pw.TextStyle(fontSize: 9, color: _muted)));
   } else {
     content.add(table(
-      ['Упражнение', 'Недель', 'Начало', 'Конец', 'Лучший', 'Изменение'],
+      [tr('Упражнение'), tr('Недель'), tr('Начало'), tr('Конец'), tr('Лучший'), tr('Изменение')],
       [
         for (final e in r.exercises)
           [
-            cell(e.isCompound ? e.name : '${e.name} (изол.)'),
+            cell(e.isCompound ? trName(e.name) : tr('{0} (изол.)', [trName(e.name)])),
             cell('${e.e1rm.length}', right: true),
             cell(_kg(e.first), right: true),
             cell(_kg(e.last), right: true),
@@ -252,14 +256,14 @@ Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
 
   // ---------- Нагрузка по неделям ----------
   final maxTon = r.weeks.fold(0.0, (a, w) => w.tonnageKg > a ? w.tonnageKg : a);
-  content.add(section('Нагрузка по неделям',
-      hint: 'Выполнение — доля зелёных подходов. Полоса — тоннаж недели относительно максимального.'));
+  content.add(section(tr('Нагрузка по неделям'),
+      hint: tr('Выполнение — доля зелёных подходов. Полоса — тоннаж недели относительно максимального.')));
   content.add(table(
-    ['Нед.', 'С даты', 'Трен.', 'Подх.', 'Тоннаж, т', '', 'Выполнено'],
+    [tr('Нед.'), tr('С даты'), tr('Трен.'), tr('Подх.'), '${tr('Тоннаж')}, $tonnageUnit', '', tr('Выполнено')],
     [
       for (final w in r.weeks)
         [
-          cell(w.isDeload ? '${w.weekNo} · разгр.' : '${w.weekNo}', color: w.isDeload ? _muted : _ink),
+          cell(w.isDeload ? tr('{0} · разгр.', [w.weekNo]) : '${w.weekNo}', color: w.isDeload ? _muted : _ink),
           cell(ruDate(w.start)),
           cell('${w.sessions}', right: true),
           cell('${w.workSets}', right: true),
@@ -289,19 +293,19 @@ Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
 
   // ---------- Объём по группам мышц ----------
   if (r.muscles.isNotEmpty) {
-    content.add(section('Объём по группам мышц',
-        hint: 'Среднее число рабочих подходов в неделю (с долями упражнений) против целевого коридора.'));
+    content.add(section(tr('Объём по группам мышц'),
+        hint: tr('Среднее число рабочих подходов в неделю (с долями упражнений) против целевого коридора.')));
     content.add(table(
-      ['Группа', 'Подходов в неделю', 'Коридор', 'Оценка'],
+      [tr('Группа'), tr('Подходов в неделю'), tr('Коридор'), tr('Оценка')],
       [
         for (final m in r.muscles)
           [
-            cell(m.name),
+            cell(trName(m.name)),
             cell(_n1(m.avgSets), right: true),
             cell('${m.targetMin}–${m.targetMax}', right: true),
             m.avgSets < m.targetMin
-                ? cell('ниже', color: _warn, bold: true)
-                : (m.avgSets > m.targetMax ? cell('выше', color: _bad, bold: true) : cell('в коридоре', color: _good, bold: true)),
+                ? cell(tr('ниже'), color: _warn, bold: true)
+                : (m.avgSets > m.targetMax ? cell(tr('выше'), color: _bad, bold: true) : cell(tr('в коридоре'), color: _good, bold: true)),
           ],
       ],
       widths: {
@@ -316,16 +320,16 @@ Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
 
   // ---------- Решения по рекомендациям ----------
   if (r.decisions.isNotEmpty) {
-    content.add(section('Изменения плана по рекомендациям'));
+    content.add(section(tr('Изменения плана по рекомендациям')));
     content.add(table(
-      ['Дата', 'Правило', 'Упражнение', 'Решение'],
+      [tr('Дата'), tr('Правило'), tr('Упражнение'), tr('Решение')],
       [
         for (final d in r.decisions)
           [
             cell(ruDate(d.date)),
-            cell(d.rule),
-            cell(d.exercise ?? 'вся программа'),
-            cell(d.status == 'accepted' ? 'принято' : 'отклонено', color: d.status == 'accepted' ? _good : _muted),
+            cell(trName(d.rule)),
+            cell(d.exercise == null ? tr('вся программа') : trName(d.exercise!)),
+            cell(d.status == 'accepted' ? tr('принято') : tr('отклонено'), color: d.status == 'accepted' ? _good : _muted),
           ],
       ],
       widths: {
@@ -339,7 +343,7 @@ Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
 
   // ---------- Заметки ----------
   if (r.notes.isNotEmpty) {
-    content.add(section('Заметки к тренировкам'));
+    content.add(section(tr('Заметки к тренировкам')));
     for (final n in r.notes) {
       content.add(pw.Padding(
         padding: const pw.EdgeInsets.only(bottom: 4),
@@ -357,8 +361,8 @@ Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
   content.add(pw.Padding(
     padding: const pw.EdgeInsets.only(top: 16),
     child: pw.Text(
-      'Данные из журнала тренировок Achm. Статусы подходов: зелёный — выполнен (недобор до 2 повторов), '
-      'жёлтый — недобор 3–5, красный — 6 и больше.',
+      tr('Данные из журнала тренировок Achm. Статусы подходов: зелёный — выполнен (недобор до 2 повторов), '
+      'жёлтый — недобор 3–5, красный — 6 и больше.'),
       style: const pw.TextStyle(fontSize: 7.5, color: _muted),
     ),
   ));

@@ -6,6 +6,7 @@ import '../../data/app_state.dart';
 import '../../providers.dart';
 import '../../services/security.dart';
 import 'pin_pad.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Блокировка при запуске: если задан PIN, приложение открывается после PIN или биометрии.
 class LockGate extends ConsumerStatefulWidget {
@@ -75,7 +76,7 @@ class _LockGateState extends ConsumerState<LockGate> {
               children: [
                 const Icon(Icons.lock_outline, size: 40),
                 const SizedBox(height: 12),
-                Text(_error ? 'Неверный PIN' : 'Введите PIN',
+                Text(_error ? tr('Неверный PIN') : tr('Введите PIN'),
                     style: Theme.of(context)
                         .textTheme
                         .titleLarge
@@ -92,7 +93,7 @@ class _LockGateState extends ConsumerState<LockGate> {
                   extra: _bioEnabled
                       ? IconButton(
                           iconSize: 36,
-                          tooltip: 'Биометрия',
+                          tooltip: tr('Биометрия'),
                           icon: const Icon(Icons.fingerprint),
                           onPressed: _tryBiometric,
                         )

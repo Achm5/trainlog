@@ -13,6 +13,7 @@ import '../../data/report_repo.dart';
 import '../../providers.dart';
 import '../../services/mesocycle_pdf.dart';
 import '../common.dart';
+import 'package:trainlog/i18n.dart';
 
 Future<PdfAssets> loadPdfAssets() async => PdfAssets(
       regular: await rootBundle.load('assets/fonts/Roboto-Regular.ttf'),
@@ -22,7 +23,7 @@ Future<PdfAssets> loadPdfAssets() async => PdfAssets(
 
 /// Собирает PDF-отчёт за мезоцикл программы и предлагает отправить его или сохранить в файл.
 Future<void> exportMesocycleReport(BuildContext context, WidgetRef ref, int programId) async {
-  toast(context, 'Готовлю отчёт…');
+  toast(context, tr('Готовлю отчёт…'));
   File file;
   String title;
   try {
@@ -31,9 +32,9 @@ Future<void> exportMesocycleReport(BuildContext context, WidgetRef ref, int prog
     final dir = await getTemporaryDirectory();
     file = File(p.join(dir.path, reportFileName(report)));
     await file.writeAsBytes(bytes, flush: true);
-    title = 'Отчёт за мезоцикл «${report.programName}»';
+    title = tr('Отчёт за мезоцикл «{0}»', [report.programName]);
   } catch (e) {
-    if (context.mounted) toast(context, 'Не удалось сформировать отчёт: $e');
+    if (context.mounted) toast(context, tr('Не удалось сформировать отчёт: {0}', [e]));
     return;
   }
   if (!context.mounted) return;
@@ -52,13 +53,13 @@ Future<void> exportMesocycleReport(BuildContext context, WidgetRef ref, int prog
           ),
           ListTile(
             leading: const Icon(Icons.share_outlined),
-            title: const Text('Отправить тренеру'),
-            subtitle: const Text('Мессенджер, почта, облако'),
+            title: Text(tr('Отправить тренеру')),
+            subtitle: Text(tr('Мессенджер, почта, облако')),
             onTap: () => Navigator.pop(c, 'share'),
           ),
           ListTile(
             leading: const Icon(Icons.save_alt),
-            title: const Text('Сохранить в файл'),
+            title: Text(tr('Сохранить в файл')),
             onTap: () => Navigator.pop(c, 'save'),
           ),
         ],
@@ -75,13 +76,13 @@ Future<void> exportMesocycleReport(BuildContext context, WidgetRef ref, int prog
         ));
       case 'save':
         final path = await FilePicker.saveFile(
-          dialogTitle: 'Сохранить отчёт',
+          dialogTitle: tr('Сохранить отчёт'),
           fileName: p.basename(file.path),
           bytes: await file.readAsBytes(),
         );
-        if (path != null && context.mounted) toast(context, 'Отчёт сохранён');
+        if (path != null && context.mounted) toast(context, tr('Отчёт сохранён'));
     }
   } catch (e) {
-    if (context.mounted) toast(context, 'Ошибка: $e');
+    if (context.mounted) toast(context, tr('Ошибка: {0}', [e]));
   }
 }

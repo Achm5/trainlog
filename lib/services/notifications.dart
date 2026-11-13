@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:trainlog/i18n.dart';
 
 /// Локальные уведомления: сигнал окончания отдыха (работает при свёрнутом приложении).
 class NotificationService {
@@ -37,14 +38,14 @@ class NotificationService {
     try {
       await _plugin.zonedSchedule(
         id: _restId,
-        title: 'Отдых окончен',
-        body: 'Пора делать следующий подход',
+        title: tr('Отдых окончен'),
+        body: tr('Пора делать следующий подход'),
         scheduledDate: tz.TZDateTime.from(at, tz.UTC),
-        notificationDetails: const NotificationDetails(
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             'rest_timer',
-            'Таймер отдыха',
-            channelDescription: 'Сигнал об окончании отдыха между подходами',
+            tr('Таймер отдыха'),
+            channelDescription: tr('Сигнал об окончании отдыха между подходами'),
             importance: Importance.high,
             priority: Priority.high,
             enableVibration: true,
@@ -68,8 +69,8 @@ class NotificationService {
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             'workout_progress',
-            'Ход тренировки',
-            channelDescription: 'Следующий подход и таймер отдыха на экране блокировки',
+            tr('Ход тренировки'),
+            channelDescription: tr('Следующий подход и таймер отдыха на экране блокировки'),
             importance: Importance.low,
             priority: Priority.low,
             ongoing: true,

@@ -59,3 +59,9 @@ const stateOvertrainingDismissed = 'overtraining_dismissed_week';
 
 /// Уведомление о ходе тренировки на экране блокировки: '0' — выключено (по умолчанию включено).
 const stateWorkoutNotification = 'workout_notification';
+
+/// Язык интерфейса: 'ru' или 'en' (если не задан — по языку телефона).
+const stateLang = 'lang';
+
+/// Единицы веса: 'kg' или 'lb'.
+const stateUnits = 'units';

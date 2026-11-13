@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trainlog/i18n.dart';
 
 /// Индикатор введённых цифр PIN.
 class PinDots extends StatelessWidget {
@@ -124,7 +125,7 @@ class _PinEntryScreenState extends State<_PinEntryScreen> {
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _pin.length >= 4 ? () => Navigator.of(context).pop(_pin) : null,
-                  child: const Text('Готово'),
+                  child: Text(tr('Готово')),
                 ),
               ],
             ),

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../domain/nutrition.dart';
+import 'package:trainlog/i18n.dart';
 
 class OffException implements Exception {
   OffException(this.message);
@@ -27,16 +28,16 @@ class OffClient {
     try {
       final r = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
       if (r.statusCode == 404) return const {};
-      if (r.statusCode != 200) throw OffException('Open Food Facts ответил ошибкой ${r.statusCode}. Попробуйте позже.');
+      if (r.statusCode != 200) throw OffException(tr('Open Food Facts ответил ошибкой {0}. Попробуйте позже.', [r.statusCode]));
       return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     } on SocketException {
-      throw OffException('Нет соединения с интернетом. Доступны ручной ввод и сохранённые продукты.');
+      throw OffException(tr('Нет соединения с интернетом. Доступны ручной ввод и сохранённые продукты.'));
     } on TimeoutException {
-      throw OffException('Open Food Facts не отвечает. Проверьте интернет и попробуйте ещё раз.');
+      throw OffException(tr('Open Food Facts не отвечает. Проверьте интернет и попробуйте ещё раз.'));
     } on http.ClientException {
-      throw OffException('Нет соединения с интернетом. Доступны ручной ввод и сохранённые продукты.');
+      throw OffException(tr('Нет соединения с интернетом. Доступны ручной ввод и сохранённые продукты.'));
     } on FormatException {
-      throw OffException('Open Food Facts вернул некорректный ответ.');
+      throw OffException(tr('Open Food Facts вернул некорректный ответ.'));
     }
   }
 

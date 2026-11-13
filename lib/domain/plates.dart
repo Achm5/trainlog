@@ -1,6 +1,8 @@
 /// Калькулятор блинов: какие диски вешать на каждую сторону грифа. Чистые функции.
 library;
 
+import 'package:trainlog/i18n.dart';
+
 /// Стандартный набор дисков (кг), от большего к меньшему.
 const defaultPlates = [25.0, 20.0, 15.0, 10.0, 5.0, 2.5, 1.25];
 
@@ -48,11 +50,11 @@ PlateLoad? platesFor({
   );
 }
 
-String _kg(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString().replaceAll('.', ',');
+String _kg(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString().replaceAll('.', decSep);
 
 /// «25 × 2 + 10 + 1,25» — диски одной стороны от большего к меньшему.
 String platesLabel(PlateLoad load) {
-  if (load.perSide.isEmpty) return 'только гриф';
+  if (load.perSide.isEmpty) return tr('только гриф');
   final keys = load.perSide.keys.toList()..sort((a, b) => b.compareTo(a));
   return [
     for (final k in keys) load.perSide[k]! > 1 ? '${_kg(k)} × ${load.perSide[k]}' : _kg(k),

@@ -3,6 +3,7 @@
 library;
 
 import 'planning.dart';
+import 'package:trainlog/i18n.dart';
 
 class RuleDef {
   const RuleDef({
@@ -110,10 +111,18 @@ class Candidate {
   final Map<String, dynamic> proposal;
 }
 
+/// Минимальный шаг изменения веса; при фунтах подгоняется под сетку шага округления (2,5 кг → 5 lb).
+double _minStep(double minStepKg, double step) {
+  if (!I18n.pounds || step <= 0) return minStepKg;
+  final snapped = roundToStep(minStepKg, step);
+  return snapped > 0 ? snapped : step;
+}
+
 /// Снижение веса в TWO_RED_IN_ROW: w − max(minStep; round_step(w × p)).
 double reducedWeight({required double weight, required double pct, required double step, double minStepKg = 2.5}) {
   final byPct = roundToStep(weight * pct, step);
-  final delta = byPct > minStepKg ? byPct : minStepKg;
+  final minStep = _minStep(minStepKg, step);
+  final delta = byPct > minStep ? byPct : minStep;
   final w = weight - delta;
   return w < 0 ? 0 : w;
 }
@@ -131,7 +140,8 @@ bool noGrowth(List<double> weeklyE1rm, {required int weeks, required double minG
 /// Повышение веса в AUTO_PROGRESSION: w + max(minStep; round_step(w × p)).
 double increasedWeight({required double weight, required double pct, required double step, double minStepKg = 2.5}) {
   final byPct = roundToStep(weight * pct, step);
-  return weight + (byPct > minStepKg ? byPct : minStepKg);
+  final minStep = _minStep(minStepKg, step);
+  return weight + (byPct > minStep ? byPct : minStep);
 }
 
 bool _blocked(RuleDef rule, int? pdeId, List<RecState> existing, DateTime now) {
