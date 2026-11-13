@@ -181,11 +181,16 @@ Future<Uint8List> buildMesocyclePdf(MesocycleReport r, PdfAssets assets) async {
   final growing = r.exercises.where((e) => (e.deltaPct ?? 0) > 0.5).length;
   final falling = r.exercises.where((e) => (e.deltaPct ?? 0) < -0.5).length;
   final measured = r.exercises.where((e) => e.deltaPct != null).length;
+  final strength = [
+    if (growing > 0) 'вырос в $growing',
+    if (falling > 0) 'снизился в $falling',
+    if (measured - growing - falling > 0) 'без изменений в ${measured - growing - falling}',
+  ];
   final summaryText = <String>[
     'Проведено тренировок по плану: ${r.sessionsDone} из ${r.sessionsPlanned}.',
     if (done != null)
       'Выполнено ${(done * 100).round()}% подходов (жёлтых — ${r.setsPartial}, красных — ${r.setsFailed} из ${r.setsTotal}).',
-    if (measured > 0) 'Расчётный 1ПМ вырос в $growing из $measured упражнений${falling > 0 ? ', снизился в $falling' : ''}.',
+    if (measured > 0) 'Расчётный 1ПМ ${strength.join(', ')} из $measured упражнений.',
   ].join(' ');
 
   final weightValue = r.weightStart == null
