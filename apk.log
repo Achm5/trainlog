@@ -1,0 +1,50 @@
+== build/app/outputs/flutter-apk/trainlog-arm64.apk
+bytes=33198268
+9e479eca8247a08bdb012264adbc6fcd6f49eced345d88330e7f34d762a36a1e  build/app/outputs/flutter-apk/trainlog-arm64.apk
+No errors detected in compressed data of build/app/outputs/flutter-apk/trainlog-arm64.apk.
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v3.2 scheme (APK Signature Scheme v3.2): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+V2 Signer: certificate DN: CN=TrainLog Personal, O=Personal, C=RU
+V2 Signer: certificate SHA-256 digest: 57d0768bf18a8ad46648e74d559a78cb7932e3cf4ffae1bcf365f4a0dfa18cea
+V2 Signer: certificate SHA-1 digest: c4232107d1a552dfc07569d8397c72362bf3d8eb
+V2 Signer: certificate MD5 digest: ff98a4235c0c69bf5f6f921769d2d10c
+V2 Signer: key algorithm: RSA
+V2 Signer: key size (bits): 2048
+V2 Signer: public key SHA-256 digest: ccc5cbc34567641e99f20f2b496e37a720dd45057b6f9feaa2d26536314a613a
+V2 Signer: public key SHA-1 digest: 3f7025af403ef6ea695771cffaf6648cacaac944
+V2 Signer: public key MD5 digest: c8906fa36d2e2cdb451867171406670d
+package: name='ru.personal.trainlog' versionCode='2035' versionName='1.0.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+application-label:'Achm'
+native-code: 'arm64-v8a'
+== build/app/outputs/flutter-apk/trainlog-arm32.apk
+bytes=30051118
+38342fcc7b9424163d3b94c49969a477fe31ef11288db499e38107103ddc0faf  build/app/outputs/flutter-apk/trainlog-arm32.apk
+No errors detected in compressed data of build/app/outputs/flutter-apk/trainlog-arm32.apk.
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v3.2 scheme (APK Signature Scheme v3.2): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+V2 Signer: certificate DN: CN=TrainLog Personal, O=Personal, C=RU
+V2 Signer: certificate SHA-256 digest: 57d0768bf18a8ad46648e74d559a78cb7932e3cf4ffae1bcf365f4a0dfa18cea
+V2 Signer: certificate SHA-1 digest: c4232107d1a552dfc07569d8397c72362bf3d8eb
+V2 Signer: certificate MD5 digest: ff98a4235c0c69bf5f6f921769d2d10c
+V2 Signer: key algorithm: RSA
+V2 Signer: key size (bits): 2048
+V2 Signer: public key SHA-256 digest: ccc5cbc34567641e99f20f2b496e37a720dd45057b6f9feaa2d26536314a613a
+V2 Signer: public key SHA-1 digest: 3f7025af403ef6ea695771cffaf6648cacaac944
+V2 Signer: public key MD5 digest: c8906fa36d2e2cdb451867171406670d
+package: name='ru.personal.trainlog' versionCode='1035' versionName='1.0.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+application-label:'Achm'
+native-code: 'armeabi-v7a'

@@ -1,0 +1,203 @@
+
+::group::✅ Passing tests
+✅ /home/runner/work/trainlog/trainlog/test/i18n_test.dart: русский по умолчанию: ключ и есть текст, аргументы подставляются
+✅ /home/runner/work/trainlog/trainlog/test/i18n_test.dart: английский: перевод, запасной вариант и названия из справочника
+✅ /home/runner/work/trainlog/trainlog/test/i18n_test.dart: фунты: значения пересчитываются, «кг» в тексте меняется на lb
+✅ /home/runner/work/trainlog/trainlog/test/i18n_test.dart: фунты: шаг правил ложится на сетку 5 lb, блины считаются в фунтах
+✅ /home/runner/work/trainlog/trainlog/test/i18n_test.dart: в килограммах шаг правил прежний
+✅ /home/runner/work/trainlog/trainlog/test/i18n_test.dart: словарь: плейсхолдеры перевода совпадают с ключом, пустых переводов нет
+✅ /home/runner/work/trainlog/trainlog/test/i18n_test.dart: каждая простая строка tr('…') из кода есть в словаре
+✅ /home/runner/work/trainlog/trainlog/test/i18n_test.dart: названия справочника и готовых программ переведены
+✅ /home/runner/work/trainlog/trainlog/test/data/nutrition_flow_test.dart: вес и тренд: EMA сохраняется в trend_kg, правка пересчитывает
+✅ /home/runner/work/trainlog/trainlog/test/data/nutrition_flow_test.dart: формульная норма: без профиля не считается, с профилем сохраняется в nutrition_targets
+✅ /home/runner/work/trainlog/trainlog/test/data/nutrition_flow_test.dart: дневник: снимок КБЖУ не меняется при правке продукта; копирование приёма пищи
+✅ /home/runner/work/trainlog/trainlog/test/data/nutrition_flow_test.dart: Open Food Facts: кэш по штрихкоду обновляется, а не дублируется; избранное и недавние
+✅ /home/runner/work/trainlog/trainlog/test/data/nutrition_flow_test.dart: адаптивный TDEE при закрытии недели невалидное окно оставляет прежнее значение
+✅ /home/runner/work/trainlog/trainlog/test/data/nutrition_flow_test.dart: адаптивный TDEE при закрытии недели валидное окно: новая норма с понедельника, изменение не больше 150 ккал
+✅ /home/runner/work/trainlog/trainlog/test/data/nutrition_flow_test.dart: адаптивный TDEE при закрытии недели без нормы пересчёт не выполняется
+✅ /home/runner/work/trainlog/trainlog/test/data/nutrition_flow_test.dart: рецепт: КБЖУ на 100 г из ингредиентов, правка состава пересчитывает
+✅ /home/runner/work/trainlog/trainlog/test/data/nutrition_flow_test.dart: вода: сумма за день, отмена последней записи, норма по расходу и по весу
+✅ /home/runner/work/trainlog/trainlog/test/data/rules_flow_test.dart: TWO_RED_IN_ROW: создание, принятие сдвигает прогрессию, откат возвращает план
+✅ /home/runner/work/trainlog/trainlog/test/data/rules_flow_test.dart: отклонение уводит правило в cooldown; непринятая рекомендация истекает на следующей сессии
+✅ /home/runner/work/trainlog/trainlog/test/data/rules_flow_test.dart: закрытие нескольких пропущенных недель подряд
+✅ /home/runner/work/trainlog/trainlog/test/data/rules_flow_test.dart: week_closed: застой базового упражнения → досрочная разгрузка, плато подавлено; принятие и откат
+✅ /home/runner/work/trainlog/trainlog/test/data/rules_flow_test.dart: E1RM_PLATEAU: +1 подход и смена вариации с откатом
+✅ /home/runner/work/trainlog/trainlog/test/data/rules_flow_test.dart: AUTO_PROGRESSION: верх диапазона две сессии → +2,5 кг, откат
+✅ /home/runner/work/trainlog/trainlog/test/data/rules_flow_test.dart: AUTO_PROGRESSION по запасу RIR; обычное выполнение не срабатывает
+✅ /home/runner/work/trainlog/trainlog/test/data/rules_flow_test.dart: REPS_CUT: две частичные сессии → повторы 6–8, откат
+✅ /home/runner/work/trainlog/trainlog/test/data/report_test.dart: данные отчёта за мезоцикл
+✅ /home/runner/work/trainlog/trainlog/test/data/report_test.dart: отчёт на английском и в фунтах
+✅ /home/runner/work/trainlog/trainlog/test/data/schema_test.dart: схема: 22 таблицы ТЗ и таблица воды, внешние ключи включены
+✅ /home/runner/work/trainlog/trainlog/test/data/report_test.dart: отчёт пустой программы строится
+✅ /home/runner/work/trainlog/trainlog/test/data/schema_test.dart: сиды: настройки, группы мышц, упражнения с вариациями, три правила
+✅ /home/runner/work/trainlog/trainlog/test/data/schema_test.dart: settings — ровно одна строка
+✅ /home/runner/work/trainlog/trainlog/test/data/schema_test.dart: не более одной активной программы
+✅ /home/runner/work/trainlog/trainlog/test/data/report_test.dart: недели нагрузки для проверки перетренированности
+✅ /home/runner/work/trainlog/trainlog/test/data/schema_test.dart: упражнение с записями в журнале удалить нельзя
+✅ /home/runner/work/trainlog/trainlog/test/data/schema_test.dart: ограничения set_logs: RIR 0–5 и уникальный номер подхода
+✅ /home/runner/work/trainlog/trainlog/test/data/schema_test.dart: updated_at обновляется триггером
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: программа: недели, дни, одна разгрузочная неделя
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: линейный шаг с округлением вниз и автоматическая разгрузка
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: ручная правка веса не пересчитывается, сброс возвращает расчёт
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: перенос разгрузки на другую неделю перестраивает план
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: длительность дня и подсказки при превышении лимита
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: сессия: предзаполнение, статусы, 1ПМ, недельные агрегаты и правка
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: свободная тренировка: статус не считается, в аналитику идёт; дельта к прошлой неделе
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: копирование дня: упражнения и план по неделям переносятся в другой день
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: рекорд 1ПМ: первый подход не рекорд, превышение максимума — рекорд
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: копия программы: структура и план переносятся, веса сдвигаются
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: импорт программы из CSV: дни, недели, разгрузка, веса как в файле, новые упражнения
+✅ /home/runner/work/trainlog/trainlog/test/data/flow_test.dart: «прошлый раз»: подходы упражнения из предыдущей завершённой тренировки
+✅ /home/runner/work/trainlog/trainlog/test/data/backup_migration_test.dart: экспорт → импорт возвращает те же данные
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:trainlog/data/database.g.dart:13337:36)
+#4      new AppDatabase (package:trainlog/data/database.dart)
+#5      new AppDatabase.memory (package:trainlog/data/database.dart:49:35)
+#6      main.<anonymous closure> (file:///home/runner/work/trainlog/trainlog/test/data/backup_migration_test.dart:61:27)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
+<asynchronous suspension>
+#8      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#9      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+✅ /home/runner/work/trainlog/trainlog/test/data/backup_migration_test.dart: импорт отклоняет посторонние файлы и не трогает данные
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:trainlog/data/database.g.dart:13337:36)
+#4      new AppDatabase (package:trainlog/data/database.dart)
+#5      new AppDatabase.file (package:trainlog/data/database.dart:44:42)
+#6      main.<anonymous closure> (file:///home/runner/work/trainlog/trainlog/test/data/backup_migration_test.dart:84:31)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
+<asynchronous suspension>
+#8      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#9      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+✅ /home/runner/work/trainlog/trainlog/test/data/templates_test.dart: каждый шаблон создаёт черновик с упражнениями из справочника
+✅ /home/runner/work/trainlog/trainlog/test/data/backup_migration_test.dart: миграция со схемы v1 на текущую без потери данных
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:trainlog/data/database.g.dart:13337:36)
+#4      new AppDatabase (package:trainlog/data/database.dart)
+#5      new AppDatabase.file (package:trainlog/data/database.dart:44:42)
+#6      BackupService.importFrom (package:trainlog/data/backup.dart:61:38)
+<asynchronous suspension>
+#7      main.<anonymous closure> (file:///home/runner/work/trainlog/trainlog/test/data/backup_migration_test.dart:124:5)
+<asynchronous suspension>
+#8      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
+<asynchronous suspension>
+#9      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#10     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Округление вниз до шага
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Округление до ближайшего шага
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Режимы веса процент от 1ПМ: 70 → 72,5 → 75 → 77,5%
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Режимы веса линейный шаг
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Режимы веса вручную и без данных
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Разгрузка подходы × 0,5 с округлением вверх, не меньше 1
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Разгрузка вес × 0,9 с округлением до шага
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Разгрузка RIR + 2, не больше 5
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Длительность дня: подходы × (подход + отдых) + разминка
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Недели начало недели — понедельник
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Недели ближайший понедельник
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Недели несколько пропущенных недель закрываются по очереди
+✅ /home/runner/work/trainlog/trainlog/test/domain/planning_test.dart: Формат веса
+✅ /home/runner/work/trainlog/trainlog/test/data/backup_migration_test.dart: миграция v3 → v4 добавляет правила автопрогрессии и не трогает правки существующих
+✅ /home/runner/work/trainlog/trainlog/test/data/backup_migration_test.dart: CSV журнала и дневника
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Эпли 100 кг × 5 = 116,67
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Эпли r = 1 → вес
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Эпли r > 12 не учитывается
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Эпли вариант с RIR: в формулу идёт r + RIR
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Эпли нулевой вес или повторы не считаются
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Статус подхода границы недобора 0, 1, 2, 3, 5, 6
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Статус подхода перевыполнение — done
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Статус подхода недобор считается от нижней границы диапазона
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Статус подхода пропуск и свободная тренировка
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Статус подхода флаг «вес снижен»
+✅ /home/runner/work/trainlog/trainlog/test/domain/strength_test.dart: Статус подхода статус упражнения — худший по подходам
+✅ /home/runner/work/trainlog/trainlog/test/domain/analytics_test.dart: подход жима = 1 подход на грудь + 0,5 на трицепс; тоннаж с долями
+✅ /home/runner/work/trainlog/trainlog/test/domain/analytics_test.dart: разминка не идёт в аналитику, пропуски не считаются рабочими
+✅ /home/runner/work/trainlog/trainlog/test/domain/analytics_test.dart: 1ПМ считается отдельно по каждой вариации
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: TWO_RED_IN_ROW формула: 100 кг → 95 кг при p = 5%
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: TWO_RED_IN_ROW формула: 60 кг × 2,5% = 1,5 кг → минимальный шаг 2,5 кг → 57,5 кг
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: TWO_RED_IN_ROW формула: 200 кг × 2,5% = 5 кг → 195 кг; шаг округления 1 кг
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: TWO_RED_IN_ROW две последние сессии failed, недобор ≥ 6 во второй → −5%
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: TWO_RED_IN_ROW остальные случаи → −2,5%, но не меньше 2,5 кг
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: TWO_RED_IN_ROW не срабатывает: одна сессия, не подряд, нет веса
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: TWO_RED_IN_ROW не проверяется на week_closed
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: cooldown и одна активная рекомендация cooldown после решения: 7 дней
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: cooldown и одна активная рекомендация cooldown другого правила и другого объекта не мешает
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: cooldown и одна активная рекомендация на объекте уже есть новая рекомендация — вторая не создаётся
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: E1RM_PLATEAU нет роста ≥ 1% три недели подряд
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: E1RM_PLATEAU срабатывает на week_closed и предлагает выбор
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: E1RM_PLATEAU растущее упражнение не трогается
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: EARLY_DELOAD ≥ 50% базовых без роста 2 недели
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: EARLY_DELOAD меньше половины базовых — не срабатывает
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: EARLY_DELOAD доля жёлтых и красных подходов ≥ 40%
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: EARLY_DELOAD не ставится, если следующая неделя уже разгрузка или цикл закончился
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: EARLY_DELOAD подавляет E1RM_PLATEAU на неделю разгрузки
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: EARLY_DELOAD в cooldown досрочная разгрузка не подавляет плато
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: выключенное правило не срабатывает
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: Автопрогрессия формула прибавки: max(2,5 кг; 2,5% с округлением до шага)
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: Автопрогрессия две сессии с верхом диапазона → +2,5 кг
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: Автопрогрессия запас RIR ≥ 1 сверх целевого тоже считается
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: Автопрогрессия не срабатывает: одна лёгкая сессия, обычное выполнение, нет веса
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: Автопрогрессия две частичные сессии → повторы 8–10 → 6–8, вес не трогается
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: Автопрогрессия повторы не опускаются ниже min_reps
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: Автопрогрессия провал важнее: TWO_RED_IN_ROW по приоритету
+✅ /home/runner/work/trainlog/trainlog/test/domain/rules_test.dart: Автопрогрессия cooldown 14 дней
+✅ /home/runner/work/trainlog/trainlog/test/domain/plates_test.dart: 100 кг на грифе 20 кг: по 40 кг на сторону = 25 + 15
+✅ /home/runner/work/trainlog/trainlog/test/domain/plates_test.dart: жадный набор с повторами: 142,5 кг
+✅ /home/runner/work/trainlog/trainlog/test/domain/plates_test.dart: недостающий мелкий диск: остаток честно показан
+✅ /home/runner/work/trainlog/trainlog/test/domain/plates_test.dart: текстовая запись набора
+✅ /home/runner/work/trainlog/trainlog/test/domain/plates_test.dart: только гриф и цель меньше грифа
+✅ /home/runner/work/trainlog/trainlog/test/domain/plates_test.dart: другой гриф (15 кг)
+✅ /home/runner/work/trainlog/trainlog/test/domain/overtraining_test.dart: спокойная история без признаков
+✅ /home/runner/work/trainlog/trainlog/test/domain/overtraining_test.dart: 1ПМ падает две рабочие недели подряд у большинства упражнений
+✅ /home/runner/work/trainlog/trainlog/test/domain/overtraining_test.dart: недоборы ≥ 30% две рабочие недели подряд
+✅ /home/runner/work/trainlog/trainlog/test/domain/overtraining_test.dart: скачок тоннажа ≥ 1,3 к среднему за 4 недели
+✅ /home/runner/work/trainlog/trainlog/test/domain/overtraining_test.dart: объём выше коридора на 20%
+✅ /home/runner/work/trainlog/trainlog/test/domain/overtraining_test.dart: 6 недель подряд без разгрузки; неделя отдыха обнуляет счёт
+✅ /home/runner/work/trainlog/trainlog/test/domain/overtraining_test.dart: предупреждение — от двух признаков
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: BMR (Миффлин — Сан Жеор) мужчина: 10·80 + 6,25·180 − 5·30 + 5 = 1780
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: BMR (Миффлин — Сан Жеор) женщина: 10·60 + 6,25·165 − 5·28 − 161 = 1330,25
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: BMR (Миффлин — Сан Жеор) возраст по дате рождения
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Целевая норма набор +10%
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Целевая норма снижение −15%
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Целевая норма удержание: поправка 0
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Целевая норма калории не опускаются ниже BMR
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Целевая норма углеводы не уходят в минус
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Тренд веса EMA с α = 0,1
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Тренд веса пропущенные дни интерполируются
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Тренд веса пустой ввод
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Адаптивный TDEE формула и сглаживание 0,7 / 0,3
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Адаптивный TDEE невалидное окно оставляет прежнее значение
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Адаптивный TDEE ограничение ±150 ккал за неделю
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Open Food Facts поля карточки
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: Open Food Facts карточка без калорий или названия не импортируется
+✅ /home/runner/work/trainlog/trainlog/test/domain/nutrition_test.dart: порция: КБЖУ по граммам
+✅ /home/runner/work/trainlog/trainlog/test/domain/session_progress_test.dart: ход тренировки: разминка не считается, пропуск закрывает подход
+✅ /home/runner/work/trainlog/trainlog/test/domain/session_progress_test.dart: краткая запись подходов группирует повторы по весу
+✅ /home/runner/work/trainlog/trainlog/test/domain/session_progress_test.dart: следующий подход: первый невыполненный рабочий по порядку упражнений
+::endgroup::
+
+🎉 142 tests passed.

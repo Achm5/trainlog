@@ -1,0 +1,5 @@
+Analyzing trainlog...                                           
+
+   info • Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' • lib/features/journal/session_screen.dart:517:88 • use_null_aware_elements
+
+1 issue found. (ran in 11.6s)

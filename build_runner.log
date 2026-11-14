@@ -1,0 +1,10 @@
+  compiling builders/aot
+  25s compiling builders/aot
+  0s drift_dev on 288 inputs; lib/app.dart
+  10s drift_dev on 288 inputs: 1 output; spent 8s analyzing, 1s resolving; lib/data/analytics_repo.dart
+  12s drift_dev on 288 inputs: 76 output, 1 no-op; spent 10s analyzing, 1s resolving; lib/data/journal_repo.dart
+  15s drift_dev on 288 inputs: 84 output, 1 no-op; spent 12s analyzing, 1s resolving; lib/domain/analytics.dart
+  15s drift_dev on 288 inputs: 72 skipped, 142 output, 74 no-op; spent 12s analyzing, 1s resolving
+  0s source_gen:combining_builder on 144 inputs; lib/app.dart
+  0s source_gen:combining_builder on 144 inputs: 72 skipped, 1 output, 71 no-op
+  Built with build_runner/aot in 41s; wrote 143 outputs.
